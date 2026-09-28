@@ -1,0 +1,14 @@
+# OS Junk
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+
+# IDE Configs
+.vscode/
+.idea/
+
+# Log files
+*.log
