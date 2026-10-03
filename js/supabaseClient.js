@@ -1,8 +1,8 @@
 // js/supabaseClient.js
 // Replace placeholders with your Supabase Project Settings -> API credentials
 
-const SUPABASE_URL = "https://YOUR-SUPABASE-PROJECT-ID.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR-SUPABASE-ANON-KEY";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // Initialize Supabase Client
 export const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
