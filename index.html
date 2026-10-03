@@ -22,8 +22,20 @@
                 <button id="contrastToggle" class="btn btn-outline" aria-label="Toggle High Contrast Mode">
                     👁️ High Contrast
                 </button>
-                <button onclick="document.getElementById('managerModal').classList.add('active')" class="btn btn-primary">
-                    🔑 House Manager Portal
+                
+                <!-- Login Button (Visible when logged out) -->
+                <button id="openLoginModalBtn" onclick="document.getElementById('loginModal').classList.add('active')" class="btn btn-outline">
+                    🔑 Manager Login
+                </button>
+
+                <!-- Manager Portal Button (Visible when logged in) -->
+                <button id="managerPortalNav" onclick="document.getElementById('managerModal').classList.add('active')" class="btn btn-primary" style="display: none;">
+                    📊 Update Bed Availability
+                </button>
+
+                <!-- Logout Button (Visible when logged in) -->
+                <button id="logoutBtn" class="btn btn-outline" style="display: none;">
+                    🚪 Log Out
                 </button>
             </div>
         </div>
@@ -131,6 +143,27 @@
     </main>
 
     <!-- Modals -->
+
+    <!-- Manager Login Modal -->
+    <div id="loginModal" class="modal" role="dialog" aria-labelledby="loginModalTitle" aria-modal="true">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal('loginModal')" aria-label="Close modal">×</button>
+            <h3 id="loginModalTitle">House Manager Sign In</h3>
+            <p>Log in to manage real-time bed availability for your recovery residence.</p>
+            <form id="loginForm">
+                <div class="filter-group">
+                    <label for="loginEmail">Email Address</label>
+                    <input type="email" id="loginEmail" placeholder="manager@example.com" required>
+                </div>
+                <div class="filter-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn btn-primary full-width">Sign In</button>
+            </form>
+        </div>
+    </div>
+
     <!-- 24-Hour Hold Request Modal -->
     <div id="holdModal" class="modal" role="dialog" aria-labelledby="holdHouseTitle" aria-modal="true">
         <div class="modal-content">
@@ -158,9 +191,9 @@
             <button class="close-btn" onclick="closeModal('managerModal')" aria-label="Close modal">×</button>
             <h3 id="managerModalTitle">30-Second Bed Availability Update</h3>
             <form id="quickUpdateForm">
-                <div class="filter-group">
+                <div class="filter-group" id="managerHouseSelectGroup">
                     <label for="managerHouseSelect">Select House</label>
-                    <select id="managerHouseSelect" required>
+                    <select id="managerHouseSelect">
                         <option value="">Select your assigned residence...</option>
                         <!-- Populated dynamically or during manager session -->
                     </select>

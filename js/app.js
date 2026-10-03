@@ -1,14 +1,76 @@
 // js/app.js
 import { supabase, isWithin7Days } from './supabaseClient.js';
 
+// Track active manager profile across the app session
+let currentUserProfile = null;
+
 document.addEventListener('DOMContentLoaded', () => {
     initApp();
 });
 
 async function initApp() {
     setupEventListeners();
+    await initAuth();
     await fetchAndRenderHouses();
     await loadFeedback();
+}
+
+/**
+ * Initializes Supabase Auth listeners & checks existing session
+ */
+async function initAuth() {
+    const { data: { session } } = await supabase.auth.getSession();
+    await handleSessionChange(session);
+
+    // Listen for auth state changes (login, logout, token refresh)
+    supabase.auth.onAuthStateChange(async (_event, session) => {
+        await handleSessionChange(session);
+    });
+}
+
+/**
+ * Handles profile fetching and UI state toggle on Auth change
+ */
+async function handleSessionChange(session) {
+    if (session) {
+        const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+        if (!error && profile) {
+            currentUserProfile = profile;
+            updateUIForAuth(true);
+            return;
+        }
+    }
+
+    currentUserProfile = null;
+    updateUIForAuth(false);
+}
+
+/**
+ * Toggles UI elements based on authentication status
+ */
+function updateUIForAuth(isLoggedIn) {
+    const loginBtn = document.getElementById('openLoginModalBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const managerNav = document.getElementById('managerPortalNav');
+    const houseSelectContainer = document.getElementById('managerHouseSelectGroup');
+
+    if (loginBtn) loginBtn.style.display = isLoggedIn ? 'none' : 'block';
+    if (logoutBtn) logoutBtn.style.display = isLoggedIn ? 'block' : 'none';
+    if (managerNav) managerNav.style.display = isLoggedIn ? 'block' : 'none';
+
+    // If manager has a specific house_id assigned, pre-select or lock the house field
+    const houseSelect = document.getElementById('managerHouseSelect');
+    if (houseSelect && currentUserProfile?.house_id) {
+        houseSelect.value = currentUserProfile.house_id;
+        if (houseSelectContainer) houseSelectContainer.style.display = 'none'; // Hide dropdown if tied to 1 house
+    } else if (houseSelectContainer) {
+        houseSelectContainer.style.display = 'block';
+    }
 }
 
 function setupEventListeners() {
@@ -23,10 +85,48 @@ function setupEventListeners() {
     // High Contrast Mode Toggle
     document.getElementById('contrastToggle')?.addEventListener('click', toggleHighContrast);
 
+    // Auth Listeners
+    document.getElementById('loginForm')?.addEventListener('submit', handleLogin);
+    document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
+
     // Modal Listeners
     document.getElementById('holdModalForm')?.addEventListener('submit', handleStandbyHold);
     document.getElementById('quickUpdateForm')?.addEventListener('submit', handleManagerBedUpdate);
     document.getElementById('feedbackForm')?.addEventListener('submit', handleFeedbackSubmit);
+}
+
+/**
+ * User Login Handler
+ */
+async function handleLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail')?.value.trim();
+    const password = document.getElementById('loginPassword')?.value;
+
+    if (!email || !password) return alert('Please enter both email and password.');
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+        alert('Login failed: ' + error.message);
+    } else {
+        alert('Successfully logged in!');
+        closeModal('loginModal');
+        await fetchAndRenderHouses();
+    }
+}
+
+/**
+ * User Logout Handler
+ */
+async function handleLogout() {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+        alert('Logout failed: ' + error.message);
+    } else {
+        alert('Logged out successfully.');
+        await fetchAndRenderHouses();
+    }
 }
 
 /**
@@ -69,7 +169,6 @@ async function fetchAndRenderHouses() {
 
     let filtered = houses || [];
 
-    // Client-side search and availability filtering
     if (search) {
         const term = search.toLowerCase();
         filtered = filtered.filter(h => 
@@ -139,8 +238,8 @@ function renderHouseCards(houses) {
             ${activeHolds.length > 0 ? `<p class="hold-warning">⚠️ ${activeHolds.length} 24-hr hold(s) currently pending on this house.</p>` : ''}
 
             <div class="card-actions">
-                <button class="btn btn-secondary" onclick="openHoldModal('${house.id}', '${escapeHtml(house.name)}') ${netAvailable === 0 ? 'disabled' : ''}">
-                    ⏱️ Hold Bed for 24 Hours
+                <button class="btn btn-secondary" onclick="openHoldModal('${house.id}', '${escapeHtml(house.name)}')" ${netAvailable === 0 ? 'disabled' : ''}>
+                    ⏱️️ Hold Bed for 24 Hours
                 </button>
                 <a href="tel:${escapeHtml(house.phone || '')}" class="btn btn-primary" ${!house.phone ? 'aria-disabled="true"' : ''}>
                     📞 Contact Residence
@@ -180,13 +279,25 @@ async function handleStandbyHold(e) {
 }
 
 /**
- * Rapid 30-Second House Manager Bed Count Update
+ * Rapid House Manager Bed Count Update (Secured by Auth)
  */
 async function handleManagerBedUpdate(e) {
     e.preventDefault();
-    const houseId = document.getElementById('managerHouseSelect').value;
+
+    if (!currentUserProfile) {
+        alert('You must be logged in as a house manager to update bed availability.');
+        return;
+    }
+
+    // Use assigned profile house_id first; fall back to select field if org manager
+    const houseId = currentUserProfile.house_id || document.getElementById('managerHouseSelect')?.value;
     const totalBeds = parseInt(document.getElementById('managerTotalBeds').value, 10);
     const availableBeds = parseInt(document.getElementById('managerAvailableBeds').value, 10);
+
+    if (!houseId) {
+        alert('Error: No house associated with this user.');
+        return;
+    }
 
     const { error } = await supabase.from('beds').upsert([
         {
@@ -200,7 +311,7 @@ async function handleManagerBedUpdate(e) {
     if (error) {
         alert('Update failed: ' + error.message);
     } else {
-        alert('Bed availability successfully updated in under 30 seconds!');
+        alert('Bed availability successfully updated!');
         closeModal('managerModal');
         await fetchAndRenderHouses();
     }
@@ -236,7 +347,7 @@ async function loadFeedback() {
             <div class="feedback-card">
                 <div class="feedback-header">
                     <strong>${escapeHtml(item.category)}</strong>
-                    <span class="badge badge-${item.status.toLowerCase().replace(' ', '-')}">${escapeHtml(item.status)}</span>
+                    <span class="badge badge-${(item.status || 'pending').toLowerCase().replace(' ', '-')}">${escapeHtml(item.status || 'Pending')}</span>
                 </div>
                 <p>${escapeHtml(item.message)}</p>
             </div>
@@ -272,5 +383,5 @@ window.openHoldModal = (houseId, houseName) => {
 };
 
 window.closeModal = (modalId) => {
-    document.getElementById(modalId).classList.remove('active');
+    document.getElementById(modalId)?.classList.remove('active');
 };
