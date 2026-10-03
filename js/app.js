@@ -1,8 +1,8 @@
 // js/app.js
 import { supabase, isWithin7Days } from './supabaseClient.js';
 
-// Track active manager profile across the app session
 let currentUserProfile = null;
+let currentSession = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     initApp();
@@ -11,14 +11,13 @@ document.addEventListener('DOMContentLoaded', () => {
 async function initApp() {
     setupEventListeners();
     await initAuth();
-    await populateManagerHouseDropdown();
     await fetchAndRenderHouses();
     await loadFeedback();
     subscribeToRealtimeUpdates();
 }
 
 /**
- * Enables Supabase Realtime subscriptions for live synchronization across all GitHub Pages clients
+ * Enables Supabase Realtime WebSocket subscriptions so all public clients update live
  */
 function subscribeToRealtimeUpdates() {
     supabase
@@ -26,7 +25,12 @@ function subscribeToRealtimeUpdates() {
         .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'beds' },
-            () => fetchAndRenderHouses()
+            () => {
+                fetchAndRenderHouses();
+                if (document.getElementById('orgDashboardModal')?.classList.contains('active')) {
+                    renderOrgDashboard();
+                }
+            }
         )
         .on(
             'postgres_changes',
@@ -37,82 +41,82 @@ function subscribeToRealtimeUpdates() {
 }
 
 /**
- * Initializes Supabase Auth listeners & checks existing session
+ * Initializes Supabase Auth listeners and session status checks
  */
 async function initAuth() {
     const { data: { session } } = await supabase.auth.getSession();
     await handleSessionChange(session);
 
-    // Listen for auth state changes (login, logout, token refresh)
     supabase.auth.onAuthStateChange(async (_event, session) => {
         await handleSessionChange(session);
     });
 }
 
 /**
- * Handles profile fetching and UI state toggle on Auth change
+ * Handles profile loading, email confirmation verification, and navbar state
  */
 async function handleSessionChange(session) {
+    currentSession = session;
+    const alertBanner = document.getElementById('authAlertBanner');
+
     if (session) {
-        const { data: profile, error } = await supabase
+        const isEmailConfirmed = !!session.user.email_confirmed_at;
+
+        if (!isEmailConfirmed && alertBanner) {
+            alertBanner.className = 'alert-banner alert-warning';
+            alertBanner.innerHTML = `
+                ⚠️ <strong>Email Unconfirmed:</strong> Please check <code>${escapeHtml(session.user.email)}</code> and click the verification link.
+                <button class="btn-text-link" id="bannerResendBtn">Resend Link</button>
+            `;
+            alertBanner.style.display = 'block';
+            document.getElementById('bannerResendBtn')?.addEventListener('click', resendVerificationEmail);
+        } else if (alertBanner) {
+            alertBanner.style.display = 'none';
+        }
+
+        const { data: profile } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
-            .single();
+            .maybeSingle();
 
-        if (!error && profile) {
+        if (profile) {
             currentUserProfile = profile;
-            updateUIForAuth(true);
-            return;
+        } else {
+            currentUserProfile = {
+                id: session.user.id,
+                email: session.user.email,
+                company_id: session.user.user_metadata?.company_id || null,
+                house_id: session.user.user_metadata?.house_id || null
+            };
         }
+
+        updateUIForAuth(true);
+        return;
     }
 
     currentUserProfile = null;
+    if (alertBanner) alertBanner.style.display = 'none';
     updateUIForAuth(false);
 }
 
 /**
- * Toggles UI elements based on authentication status
+ * Toggles UI navbar buttons based on authentication state
  */
 function updateUIForAuth(isLoggedIn) {
     const loginBtn = document.getElementById('openLoginModalBtn');
+    const signUpBtn = document.getElementById('openSignUpModalBtn');
     const logoutBtn = document.getElementById('logoutBtn');
     const managerNav = document.getElementById('managerPortalNav');
 
     if (loginBtn) loginBtn.style.display = isLoggedIn ? 'none' : 'block';
+    if (signUpBtn) signUpBtn.style.display = isLoggedIn ? 'none' : 'block';
     if (logoutBtn) logoutBtn.style.display = isLoggedIn ? 'block' : 'none';
     if (managerNav) managerNav.style.display = isLoggedIn ? 'block' : 'none';
 }
 
-/**
- * Populates the House Manager modal select dropdown with all registered residences from Supabase
- */
-async function populateManagerHouseDropdown() {
-    const select = document.getElementById('managerHouseSelect');
-    if (!select) return;
-
-    const { data: houses, error } = await supabase
-        .from('houses')
-        .select('id, name, city')
-        .order('name', { ascending: true });
-
-    if (error) {
-        console.error('Error fetching house list for dropdown:', error);
-        return;
-    }
-
-    select.innerHTML = '<option value="">Select your assigned residence...</option>';
-
-    houses.forEach(house => {
-        const option = document.createElement('option');
-        option.value = house.id;
-        option.textContent = `${house.name} (${house.city})`;
-        select.appendChild(option);
-    });
-}
-
 function setupEventListeners() {
-    // Filter controls
+    // Public Filter controls
     document.getElementById('searchInput')?.addEventListener('input', debounce(fetchAndRenderHouses, 300));
     document.getElementById('regionFilter')?.addEventListener('change', fetchAndRenderHouses);
     document.getElementById('countyFilter')?.addEventListener('change', fetchAndRenderHouses);
@@ -124,23 +128,74 @@ function setupEventListeners() {
     document.getElementById('contrastToggle')?.addEventListener('click', toggleHighContrast);
 
     // Auth Listeners
+    document.getElementById('signupForm')?.addEventListener('submit', handleSignUp);
     document.getElementById('loginForm')?.addEventListener('submit', handleLogin);
     document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
+    document.getElementById('resendConfirmBtn')?.addEventListener('click', resendVerificationEmail);
 
-    // Manager house select listener to pre-fill current bed numbers on selection
-    document.getElementById('managerHouseSelect')?.addEventListener('change', (e) => loadBedDataForHouse(e.target.value));
-
-    // Open Manager Modal button listener
-    document.getElementById('managerPortalNav')?.addEventListener('click', prepareAndOpenManagerModal);
-
-    // Modal Form Submissions
+    // Public Form Submissions
     document.getElementById('holdModalForm')?.addEventListener('submit', handleStandbyHold);
-    document.getElementById('quickUpdateForm')?.addEventListener('submit', handleManagerBedUpdate);
     document.getElementById('feedbackForm')?.addEventListener('submit', handleFeedbackSubmit);
 }
 
 /**
- * User Login Handler - Automatically launches the 30-Second Bed Update Modal upon success
+ * Handles Company / Manager Sign Up with verification email trigger
+ */
+async function handleSignUp(e) {
+    e.preventDefault();
+    const orgName = document.getElementById('signupOrgName')?.value.trim();
+    const email = document.getElementById('signupEmail')?.value.trim();
+    const password = document.getElementById('signupPassword')?.value;
+
+    if (!email || !password) return alert('Please complete all required fields.');
+
+    const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+            data: { company_name: orgName }
+        }
+    });
+
+    if (error) {
+        alert('Registration error: ' + error.message);
+        return;
+    }
+
+    closeModal('signupModal');
+
+    if (data.user && !data.session) {
+        alert(`🎉 Account created! A confirmation email was sent to ${email}. Please verify your email before logging in.`);
+    } else {
+        alert('Account created successfully!');
+        await handleSessionChange(data.session);
+        await openOrgDashboard();
+    }
+}
+
+/**
+ * Resends email confirmation link
+ */
+async function resendVerificationEmail(e) {
+    if (e) e.preventDefault();
+    const email = currentSession?.user?.email || document.getElementById('loginEmail')?.value.trim();
+
+    if (!email) {
+        alert('Please enter your email address first.');
+        return;
+    }
+
+    const { error } = await supabase.auth.resend({ type: 'signup', email });
+
+    if (error) {
+        alert('Could not resend email: ' + error.message);
+    } else {
+        alert(`Verification email resent to ${email}. Check your inbox and spam folder.`);
+    }
+}
+
+/**
+ * Handles Manager Sign In
  */
 async function handleLogin(e) {
     e.preventDefault();
@@ -149,63 +204,154 @@ async function handleLogin(e) {
 
     if (!email || !password) return alert('Please enter both email and password.');
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
         alert('Login failed: ' + error.message);
     } else {
         closeModal('loginModal');
-        await prepareAndOpenManagerModal();
+        await handleSessionChange(data.session);
+        await openOrgDashboard();
     }
 }
 
 /**
- * Prepares and opens the 30-Second Update Modal pre-populated with current values
+ * Opens Organization Dashboard Modal
  */
-async function prepareAndOpenManagerModal() {
-    const select = document.getElementById('managerHouseSelect');
-    const selectGroup = document.getElementById('managerHouseSelectGroup');
-
-    let houseToLoad = currentUserProfile?.house_id;
-
-    if (houseToLoad) {
-        if (select) select.value = houseToLoad;
-        if (selectGroup) selectGroup.style.display = 'none'; // Lock to assigned house
-    } else {
-        if (selectGroup) selectGroup.style.display = 'block';
-        houseToLoad = select?.value;
+window.openOrgDashboard = async function() {
+    if (!currentUserProfile) {
+        alert('Please sign in to access your organization portal.');
+        return;
     }
 
-    if (houseToLoad) {
-        await loadBedDataForHouse(houseToLoad);
-    }
-
-    document.getElementById('managerModal')?.classList.add('active');
-}
+    await renderOrgDashboard();
+    document.getElementById('orgDashboardModal')?.classList.add('active');
+};
 
 /**
- * Pre-fills current bed counts when a house is selected
+ * Renders individual house cards inside the Organization Portal
  */
-async function loadBedDataForHouse(houseId) {
-    if (!houseId) return;
+async function renderOrgDashboard() {
+    const grid = document.getElementById('orgHouseGrid');
+    if (!grid) return;
 
-    const { data: bed } = await supabase
-        .from('beds')
-        .select('total_beds, available_beds')
-        .eq('house_id', houseId)
-        .maybeSingle();
+    grid.innerHTML = '<div class="loading-spinner" role="status">Loading organization residences...</div>';
 
-    if (bed) {
-        document.getElementById('managerTotalBeds').value = bed.total_beds || '';
-        document.getElementById('managerAvailableBeds').value = bed.available_beds ?? 0;
-    } else {
-        document.getElementById('managerTotalBeds').value = '';
-        document.getElementById('managerAvailableBeds').value = '0';
+    let query = supabase
+        .from('houses')
+        .select(`
+            *,
+            companies(name),
+            beds(total_beds, available_beds, last_updated_at)
+        `);
+
+    if (currentUserProfile.company_id) {
+        query = query.eq('company_id', currentUserProfile.company_id);
+    } else if (currentUserProfile.house_id) {
+        query = query.eq('id', currentUserProfile.house_id);
     }
+
+    const { data: houses, error } = await query;
+
+    if (error) {
+        grid.innerHTML = `<p class="error-msg" role="alert">Error loading houses: ${error.message}</p>`;
+        return;
+    }
+
+    if (!houses || houses.length === 0) {
+        grid.innerHTML = `
+            <div class="no-results" role="status">
+                <p>No recovery residences are currently assigned to your account.</p>
+                <small>Contact MARR support to assign listings to your account.</small>
+            </div>
+        `;
+        return;
+    }
+
+    const orgName = houses[0]?.companies?.name || 'Your Organization';
+    const titleEl = document.getElementById('orgDashboardTitle');
+    if (titleEl) titleEl.innerText = `🏢 ${orgName} - Management Portal`;
+
+    grid.innerHTML = '';
+
+    houses.forEach(house => {
+        const bedData = house.beds || { total_beds: 10, available_beds: 0, last_updated_at: null };
+        const isFresh = isWithin7Days(bedData.last_updated_at);
+
+        const card = document.createElement('div');
+        card.className = 'org-house-card';
+
+        card.innerHTML = `
+            <div class="org-card-header">
+                <div>
+                    <h4>${escapeHtml(house.name)}</h4>
+                    <p class="location-tag">📍 ${escapeHtml(house.city)}, ${escapeHtml(house.county)} Co.</p>
+                </div>
+                <span class="meta-pill ${isFresh ? 'fresh-updated' : 'stale-updated'}">
+                    ${isFresh ? 'Updated < 7 days' : 'Needs Verification Update'}
+                </span>
+            </div>
+
+            <form class="org-bed-form" onsubmit="handleHouseCardUpdate(event, '${house.id}')">
+                <div class="form-row">
+                    <div class="filter-group">
+                        <label for="total-${house.id}">Total Capacity</label>
+                        <input type="number" id="total-${house.id}" value="${bedData.total_beds ?? ''}" min="1" required>
+                    </div>
+                    <div class="filter-group">
+                        <label for="available-${house.id}">Available Open Beds</label>
+                        <input type="number" id="available-${house.id}" value="${bedData.available_beds ?? 0}" min="0" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success full-width">
+                    ⚡ Update ${escapeHtml(house.name)} Status
+                </button>
+            </form>
+        `;
+
+        grid.appendChild(card);
+    });
 }
 
 /**
- * User Logout Handler
+ * Saves capacity updates for an individual house card inside the Organization Portal
+ */
+window.handleHouseCardUpdate = async function(e, houseId) {
+    e.preventDefault();
+
+    const totalBeds = parseInt(document.getElementById(`total-${houseId}`).value, 10);
+    const availableBeds = parseInt(document.getElementById(`available-${houseId}`).value, 10);
+
+    if (isNaN(totalBeds) || isNaN(availableBeds)) {
+        alert('Please enter valid bed numbers.');
+        return;
+    }
+
+    if (availableBeds > totalBeds) {
+        alert('Available beds cannot exceed total capacity.');
+        return;
+    }
+
+    const { error } = await supabase.from('beds').upsert([
+        {
+            house_id: houseId,
+            total_beds: totalBeds,
+            available_beds: availableBeds,
+            last_updated_at: new Date().toISOString()
+        }
+    ], { onConflict: 'house_id' });
+
+    if (error) {
+        alert('Update failed: ' + error.message);
+    } else {
+        alert('⚡ Bed capacity updated and live across Maine!');
+        await fetchAndRenderHouses();
+        await renderOrgDashboard();
+    }
+};
+
+/**
+ * Handles Logout
  */
 async function handleLogout() {
     const { error } = await supabase.auth.signOut();
@@ -213,12 +359,13 @@ async function handleLogout() {
         alert('Logout failed: ' + error.message);
     } else {
         alert('Logged out successfully.');
+        closeModal('orgDashboardModal');
         await fetchAndRenderHouses();
     }
 }
 
 /**
- * Fetches houses and beds with real-time multi-parameter filters
+ * Fetches and renders public directory house cards on the main landing page
  */
 async function fetchAndRenderHouses() {
     const grid = document.getElementById('houseGrid');
@@ -272,7 +419,7 @@ async function fetchAndRenderHouses() {
 }
 
 /**
- * Renders WCAG-compliant cards for each recovery house
+ * Renders WCAG-compliant cards on the public main page
  */
 function renderHouseCards(houses) {
     const grid = document.getElementById('houseGrid');
@@ -309,7 +456,7 @@ function renderHouseCards(houses) {
                 <div class="bed-count-number">${netAvailable}</div>
                 <div class="bed-count-label">
                     ${netAvailable === 1 ? 'Open Bed' : 'Open Beds'} 
-                    <small>(${bedData.total_beds} Total Capacity)</small>
+                    <small>(${bedData.total_beds} Capacity)</small>
                 </div>
             </div>
 
@@ -338,7 +485,7 @@ function renderHouseCards(houses) {
 }
 
 /**
- * Handles 24-Hour Standby Bed Hold Creation
+ * Public 24-Hour Hold Submission
  */
 async function handleStandbyHold(e) {
     e.preventDefault();
@@ -365,40 +512,7 @@ async function handleStandbyHold(e) {
 }
 
 /**
- * Rapid House Manager Bed Count Update (Secured by Auth + Syncs to Supabase)
- */
-async function handleManagerBedUpdate(e) {
-    e.preventDefault();
-
-    const houseId = currentUserProfile?.house_id || document.getElementById('managerHouseSelect')?.value;
-    const totalBeds = parseInt(document.getElementById('managerTotalBeds').value, 10);
-    const availableBeds = parseInt(document.getElementById('managerAvailableBeds').value, 10);
-
-    if (!houseId) {
-        alert('Please select a residence to update.');
-        return;
-    }
-
-    const { error } = await supabase.from('beds').upsert([
-        {
-            house_id: houseId,
-            total_beds: totalBeds,
-            available_beds: availableBeds,
-            last_updated_at: new Date().toISOString()
-        }
-    ], { onConflict: 'house_id' });
-
-    if (error) {
-        alert('Update failed: ' + error.message);
-    } else {
-        alert('⚡ Bed availability successfully updated!');
-        closeModal('managerModal');
-        await fetchAndRenderHouses();
-    }
-}
-
-/**
- * Community Feedback Submission
+ * Public Feedback Submission
  */
 async function handleFeedbackSubmit(e) {
     e.preventDefault();
@@ -455,7 +569,7 @@ function escapeHtml(str) {
     }[m]));
 }
 
-// Global scope helpers for HTML onclick attributes
+// Global modal helpers
 window.openHoldModal = (houseId, houseName) => {
     document.getElementById('holdHouseId').value = houseId;
     document.getElementById('holdHouseTitle').innerText = houseName;

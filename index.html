@@ -19,18 +19,24 @@
                 <p>Maine Association of Recovery Residences (MARR)</p>
             </div>
             <div class="nav-actions">
-                                
-                <!-- Login Button (Visible when logged out) -->
+                <button id="contrastToggle" class="btn btn-outline" aria-label="Toggle High Contrast Mode">
+                    👁️ High Contrast
+                </button>
+                
+                <!-- Guest Auth Buttons -->
+                <button id="openSignUpModalBtn" onclick="document.getElementById('signupModal').classList.add('active')" class="btn btn-outline">
+                    📝 Register Organization
+                </button>
                 <button id="openLoginModalBtn" onclick="document.getElementById('loginModal').classList.add('active')" class="btn btn-outline">
-                    🔑 Manager Login
+                    🔑 Manager Sign In
                 </button>
 
-                <!-- Manager Portal Button (Visible when logged in) -->
-                <button id="managerPortalNav" onclick="document.getElementById('managerModal').classList.add('active')" class="btn btn-primary" style="display: none;">
-                    📊 Update Bed Availability
+                <!-- Authenticated Organization Portal Button -->
+                <button id="managerPortalNav" onclick="openOrgDashboard()" class="btn btn-primary" style="display: none;">
+                    🏢 Organization Dashboard
                 </button>
 
-                <!-- Logout Button (Visible when logged in) -->
+                <!-- Logout Button -->
                 <button id="logoutBtn" class="btn btn-outline" style="display: none;">
                     🚪 Log Out
                 </button>
@@ -39,13 +45,16 @@
     </header>
 
     <main id="main-content" role="main" class="container">
+        <!-- Auth Status & Email Confirmation Alert Banner -->
+        <div id="authAlertBanner" class="alert-banner" style="display: none;" role="alert"></div>
+
         <!-- Hero Section -->
         <section class="hero-section">
             <h2>Find Open Recovery Beds Across Maine</h2>
             <p>Real-time, zero-barrier bed availability. Completely free, confidential, and publicly accessible without account registration.</p>
         </section>
 
-        <!-- Dynamic Filter Controls -->
+        <!-- Dynamic Filter Controls (Public View) -->
         <section class="filter-card" aria-label="Bed Directory Filters">
             <div class="filter-grid">
                 <div class="filter-group">
@@ -104,11 +113,11 @@
             </div>
         </section>
 
-        <!-- Directory Bed Grid -->
+        <!-- Public Directory Bed Grid -->
         <section class="directory-section">
             <h3 class="sr-only">Recovery Residence Search Results</h3>
             <div id="houseGrid" class="house-grid" aria-live="polite">
-                <!-- House cards render dynamically -->
+                <!-- Public house cards render here dynamically -->
             </div>
         </section>
 
@@ -133,20 +142,44 @@
                     <button type="submit" class="btn btn-primary">Submit Feedback</button>
                 </form>
                 <div id="feedbackList" class="feedback-list">
-                    <!-- Community feedback feeds here -->
+                    <!-- Community feedback items render here -->
                 </div>
             </div>
         </section>
     </main>
 
-    <!-- Modals -->
+    <!-- MODALS -->
 
-    <!-- Manager Login Modal -->
+    <!-- Organization Registration Modal -->
+    <div id="signupModal" class="modal" role="dialog" aria-labelledby="signupModalTitle" aria-modal="true">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal('signupModal')" aria-label="Close modal">×</button>
+            <h3 id="signupModalTitle">Register Organization / Company</h3>
+            <p>Create an account to manage bed availability across your recovery residences.</p>
+            <form id="signupForm">
+                <div class="filter-group">
+                    <label for="signupOrgName">Organization / Company Name</label>
+                    <input type="text" id="signupOrgName" placeholder="e.g., Maine Recovery Alliance" required>
+                </div>
+                <div class="filter-group">
+                    <label for="signupEmail">Work Email Address</label>
+                    <input type="email" id="signupEmail" placeholder="manager@example.com" required>
+                </div>
+                <div class="filter-group">
+                    <label for="signupPassword">Password</label>
+                    <input type="password" id="signupPassword" minlength="6" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn btn-primary full-width">Create Account & Send Confirmation Email</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- House Manager Sign In Modal -->
     <div id="loginModal" class="modal" role="dialog" aria-labelledby="loginModalTitle" aria-modal="true">
         <div class="modal-content">
             <button class="close-btn" onclick="closeModal('loginModal')" aria-label="Close modal">×</button>
-            <h3 id="loginModalTitle">House Manager Sign In</h3>
-            <p>Log in to manage real-time bed availability for your recovery residence.</p>
+            <h3 id="loginModalTitle">Organization Sign In</h3>
+            <p>Log in to access your dashboard and update real-time bed counts.</p>
             <form id="loginForm">
                 <div class="filter-group">
                     <label for="loginEmail">Email Address</label>
@@ -158,6 +191,22 @@
                 </div>
                 <button type="submit" class="btn btn-primary full-width">Sign In</button>
             </form>
+            <p class="modal-footer-note">Need to verify your email? Check your inbox or <a href="#" id="resendConfirmBtn">resend confirmation email</a>.</p>
+        </div>
+    </div>
+
+    <!-- Organization Multi-House Portal Modal -->
+    <div id="orgDashboardModal" class="modal modal-lg" role="dialog" aria-labelledby="orgDashboardTitle" aria-modal="true">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal('orgDashboardModal')" aria-label="Close modal">×</button>
+            <div class="dashboard-header">
+                <h3 id="orgDashboardTitle">🏢 Organization Management Dashboard</h3>
+                <p id="orgDashboardSub">Manage real-time bed capacity and availability for all residences in your organization.</p>
+            </div>
+            
+            <div id="orgHouseGrid" class="org-house-grid" aria-live="polite">
+                <!-- Individual house management cards render here -->
+            </div>
         </div>
     </div>
 
@@ -178,32 +227,6 @@
                     <input type="tel" id="holdPhone" placeholder="(207) 555-0199">
                 </div>
                 <button type="submit" class="btn btn-primary full-width">Confirm 24-Hour Hold</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Rapid House Manager Bed Update Modal (Under 30 Seconds) -->
-    <div id="managerModal" class="modal" role="dialog" aria-labelledby="managerModalTitle" aria-modal="true">
-        <div class="modal-content">
-            <button class="close-btn" onclick="closeModal('managerModal')" aria-label="Close modal">×</button>
-            <h3 id="managerModalTitle">30-Second Bed Availability Update</h3>
-            <form id="quickUpdateForm">
-                <div class="filter-group" id="managerHouseSelectGroup">
-                    <label for="managerHouseSelect">Select House</label>
-                    <select id="managerHouseSelect">
-                        <option value="">Select your assigned residence...</option>
-                        <!-- Populated dynamically or during manager session -->
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="managerTotalBeds">Total Bed Capacity</label>
-                    <input type="number" id="managerTotalBeds" min="1" required>
-                </div>
-                <div class="filter-group">
-                    <label for="managerAvailableBeds">Currently Open / Available Beds</label>
-                    <input type="number" id="managerAvailableBeds" min="0" required>
-                </div>
-                <button type="submit" class="btn btn-success full-width">Save & Update Real-Time Availability</button>
             </form>
         </div>
     </div>
