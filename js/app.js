@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function initApp() {
     setupEventListeners();
     await initAuth();
+    await populateManagerHouseDropdown();
     await fetchAndRenderHouses();
     await loadFeedback();
 }
@@ -73,6 +74,37 @@ function updateUIForAuth(isLoggedIn) {
     }
 }
 
+/**
+ * Populates the House Manager modal select dropdown with all registered residences from Supabase
+ */
+async function populateManagerHouseDropdown() {
+    const select = document.getElementById('managerHouseSelect');
+    if (!select) return;
+
+    const { data: houses, error } = await supabase
+        .from('houses')
+        .select('id, name, city')
+        .order('name', { ascending: true });
+
+    if (error) {
+        console.error('Error fetching house list for dropdown:', error);
+        return;
+    }
+
+    select.innerHTML = '<option value="">Select your assigned residence...</option>';
+
+    houses.forEach(house => {
+        const option = document.createElement('option');
+        option.value = house.id;
+        option.textContent = `${house.name} (${house.city})`;
+        select.appendChild(option);
+    });
+
+    if (currentUserProfile?.house_id) {
+        select.value = currentUserProfile.house_id;
+    }
+}
+
 function setupEventListeners() {
     // Filter controls
     document.getElementById('searchInput')?.addEventListener('input', debounce(fetchAndRenderHouses, 300));
@@ -89,10 +121,32 @@ function setupEventListeners() {
     document.getElementById('loginForm')?.addEventListener('submit', handleLogin);
     document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
 
+    // Manager house select listener to pre-fill current bed numbers on selection
+    document.getElementById('managerHouseSelect')?.addEventListener('change', loadSelectedHouseBedData);
+
     // Modal Listeners
     document.getElementById('holdModalForm')?.addEventListener('submit', handleStandbyHold);
     document.getElementById('quickUpdateForm')?.addEventListener('submit', handleManagerBedUpdate);
     document.getElementById('feedbackForm')?.addEventListener('submit', handleFeedbackSubmit);
+}
+
+/**
+ * Pre-fills current bed counts when a house is selected in the dropdown
+ */
+async function loadSelectedHouseBedData(e) {
+    const houseId = e.target.value;
+    if (!houseId) return;
+
+    const { data: bed } = await supabase
+        .from('beds')
+        .select('total_beds, available_beds')
+        .eq('house_id', houseId)
+        .maybeSingle();
+
+    if (bed) {
+        document.getElementById('managerTotalBeds').value = bed.total_beds || '';
+        document.getElementById('managerAvailableBeds').value = bed.available_beds ?? 0;
+    }
 }
 
 /**
@@ -112,6 +166,7 @@ async function handleLogin(e) {
     } else {
         alert('Successfully logged in!');
         closeModal('loginModal');
+        await populateManagerHouseDropdown();
         await fetchAndRenderHouses();
     }
 }
@@ -239,7 +294,7 @@ function renderHouseCards(houses) {
 
             <div class="card-actions">
                 <button class="btn btn-secondary" onclick="openHoldModal('${house.id}', '${escapeHtml(house.name)}')" ${netAvailable === 0 ? 'disabled' : ''}>
-                    ⏱️️ Hold Bed for 24 Hours
+                    ⏱ Hold Bed for 24 Hours
                 </button>
                 <a href="tel:${escapeHtml(house.phone || '')}" class="btn btn-primary" ${!house.phone ? 'aria-disabled="true"' : ''}>
                     📞 Contact Residence
@@ -284,18 +339,12 @@ async function handleStandbyHold(e) {
 async function handleManagerBedUpdate(e) {
     e.preventDefault();
 
-    if (!currentUserProfile) {
-        alert('You must be logged in as a house manager to update bed availability.');
-        return;
-    }
-
-    // Use assigned profile house_id first; fall back to select field if org manager
-    const houseId = currentUserProfile.house_id || document.getElementById('managerHouseSelect')?.value;
+    const houseId = currentUserProfile?.house_id || document.getElementById('managerHouseSelect')?.value;
     const totalBeds = parseInt(document.getElementById('managerTotalBeds').value, 10);
     const availableBeds = parseInt(document.getElementById('managerAvailableBeds').value, 10);
 
     if (!houseId) {
-        alert('Error: No house associated with this user.');
+        alert('Please select a residence to update.');
         return;
     }
 
