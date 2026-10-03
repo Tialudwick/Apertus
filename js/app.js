@@ -14,6 +14,26 @@ async function initApp() {
     await populateManagerHouseDropdown();
     await fetchAndRenderHouses();
     await loadFeedback();
+    subscribeToRealtimeUpdates();
+}
+
+/**
+ * Enables Supabase Realtime subscriptions for live synchronization across all GitHub Pages clients
+ */
+function subscribeToRealtimeUpdates() {
+    supabase
+        .channel('public-bed-updates')
+        .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'beds' },
+            () => fetchAndRenderHouses()
+        )
+        .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'hold_requests' },
+            () => fetchAndRenderHouses()
+        )
+        .subscribe();
 }
 
 /**
@@ -58,20 +78,10 @@ function updateUIForAuth(isLoggedIn) {
     const loginBtn = document.getElementById('openLoginModalBtn');
     const logoutBtn = document.getElementById('logoutBtn');
     const managerNav = document.getElementById('managerPortalNav');
-    const houseSelectContainer = document.getElementById('managerHouseSelectGroup');
 
     if (loginBtn) loginBtn.style.display = isLoggedIn ? 'none' : 'block';
     if (logoutBtn) logoutBtn.style.display = isLoggedIn ? 'block' : 'none';
     if (managerNav) managerNav.style.display = isLoggedIn ? 'block' : 'none';
-
-    // If manager has a specific house_id assigned, pre-select or lock the house field
-    const houseSelect = document.getElementById('managerHouseSelect');
-    if (houseSelect && currentUserProfile?.house_id) {
-        houseSelect.value = currentUserProfile.house_id;
-        if (houseSelectContainer) houseSelectContainer.style.display = 'none'; // Hide dropdown if tied to 1 house
-    } else if (houseSelectContainer) {
-        houseSelectContainer.style.display = 'block';
-    }
 }
 
 /**
@@ -99,10 +109,6 @@ async function populateManagerHouseDropdown() {
         option.textContent = `${house.name} (${house.city})`;
         select.appendChild(option);
     });
-
-    if (currentUserProfile?.house_id) {
-        select.value = currentUserProfile.house_id;
-    }
 }
 
 function setupEventListeners() {
@@ -122,35 +128,19 @@ function setupEventListeners() {
     document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
 
     // Manager house select listener to pre-fill current bed numbers on selection
-    document.getElementById('managerHouseSelect')?.addEventListener('change', loadSelectedHouseBedData);
+    document.getElementById('managerHouseSelect')?.addEventListener('change', (e) => loadBedDataForHouse(e.target.value));
 
-    // Modal Listeners
+    // Open Manager Modal button listener
+    document.getElementById('managerPortalNav')?.addEventListener('click', prepareAndOpenManagerModal);
+
+    // Modal Form Submissions
     document.getElementById('holdModalForm')?.addEventListener('submit', handleStandbyHold);
     document.getElementById('quickUpdateForm')?.addEventListener('submit', handleManagerBedUpdate);
     document.getElementById('feedbackForm')?.addEventListener('submit', handleFeedbackSubmit);
 }
 
 /**
- * Pre-fills current bed counts when a house is selected in the dropdown
- */
-async function loadSelectedHouseBedData(e) {
-    const houseId = e.target.value;
-    if (!houseId) return;
-
-    const { data: bed } = await supabase
-        .from('beds')
-        .select('total_beds, available_beds')
-        .eq('house_id', houseId)
-        .maybeSingle();
-
-    if (bed) {
-        document.getElementById('managerTotalBeds').value = bed.total_beds || '';
-        document.getElementById('managerAvailableBeds').value = bed.available_beds ?? 0;
-    }
-}
-
-/**
- * User Login Handler
+ * User Login Handler - Automatically launches the 30-Second Bed Update Modal upon success
  */
 async function handleLogin(e) {
     e.preventDefault();
@@ -164,10 +154,53 @@ async function handleLogin(e) {
     if (error) {
         alert('Login failed: ' + error.message);
     } else {
-        alert('Successfully logged in!');
         closeModal('loginModal');
-        await populateManagerHouseDropdown();
-        await fetchAndRenderHouses();
+        await prepareAndOpenManagerModal();
+    }
+}
+
+/**
+ * Prepares and opens the 30-Second Update Modal pre-populated with current values
+ */
+async function prepareAndOpenManagerModal() {
+    const select = document.getElementById('managerHouseSelect');
+    const selectGroup = document.getElementById('managerHouseSelectGroup');
+
+    let houseToLoad = currentUserProfile?.house_id;
+
+    if (houseToLoad) {
+        if (select) select.value = houseToLoad;
+        if (selectGroup) selectGroup.style.display = 'none'; // Lock to assigned house
+    } else {
+        if (selectGroup) selectGroup.style.display = 'block';
+        houseToLoad = select?.value;
+    }
+
+    if (houseToLoad) {
+        await loadBedDataForHouse(houseToLoad);
+    }
+
+    document.getElementById('managerModal')?.classList.add('active');
+}
+
+/**
+ * Pre-fills current bed counts when a house is selected
+ */
+async function loadBedDataForHouse(houseId) {
+    if (!houseId) return;
+
+    const { data: bed } = await supabase
+        .from('beds')
+        .select('total_beds, available_beds')
+        .eq('house_id', houseId)
+        .maybeSingle();
+
+    if (bed) {
+        document.getElementById('managerTotalBeds').value = bed.total_beds || '';
+        document.getElementById('managerAvailableBeds').value = bed.available_beds ?? 0;
+    } else {
+        document.getElementById('managerTotalBeds').value = '';
+        document.getElementById('managerAvailableBeds').value = '0';
     }
 }
 
@@ -190,8 +223,6 @@ async function handleLogout() {
 async function fetchAndRenderHouses() {
     const grid = document.getElementById('houseGrid');
     if (!grid) return;
-
-    grid.innerHTML = '<div class="loading-spinner" role="status">Loading real-time availability...</div>';
 
     const search = document.getElementById('searchInput')?.value.trim();
     const region = document.getElementById('regionFilter')?.value;
@@ -327,14 +358,14 @@ async function handleStandbyHold(e) {
     if (error) {
         alert('Could not place hold: ' + error.message);
     } else {
-        alert('24-Hour Standby Hold confirmed! The bed status has been updated.');
+        alert('24-Hour Standby Hold confirmed!');
         closeModal('holdModal');
         await fetchAndRenderHouses();
     }
 }
 
 /**
- * Rapid House Manager Bed Count Update (Secured by Auth)
+ * Rapid House Manager Bed Count Update (Secured by Auth + Syncs to Supabase)
  */
 async function handleManagerBedUpdate(e) {
     e.preventDefault();
@@ -360,7 +391,7 @@ async function handleManagerBedUpdate(e) {
     if (error) {
         alert('Update failed: ' + error.message);
     } else {
-        alert('Bed availability successfully updated!');
+        alert('⚡ Bed availability successfully updated!');
         closeModal('managerModal');
         await fetchAndRenderHouses();
     }
@@ -379,7 +410,7 @@ async function handleFeedbackSubmit(e) {
     if (error) {
         alert('Error submitting feedback: ' + error.message);
     } else {
-        alert('Thank you for contributing to Apertus. Your feedback has been submitted.');
+        alert('Thank you for contributing to Apertus.');
         document.getElementById('feedbackForm').reset();
         await loadFeedback();
     }
