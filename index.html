@@ -178,6 +178,35 @@
             <div id="houseGrid" class="organizations-grid" aria-live="polite"></div>
         </section>
 
+        <section id="managerUpdateSection" class="filter-card" style="display: none; margin-bottom: 2rem;">
+    <h3>Update Bed Availability</h3>
+    <p id="managerHouseLabel" style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;"></p>
+    
+    <form id="updateBedForm">
+        <div class="filter-grid">
+            <div class="filter-group">
+                <label for="inputAvailable">Available Beds</label>
+                <input type="number" id="inputAvailable" min="0" required>
+            </div>
+            <div class="filter-group">
+                <label for="inputOccupied">Occupied Beds</label>
+                <input type="number" id="inputOccupied" min="0" required>
+            </div>
+            <div class="filter-group">
+                <label for="inputReserved">Reserved Beds</label>
+                <input type="number" id="inputReserved" min="0" required>
+            </div>
+            <div class="filter-group">
+                <label for="inputMaintenance">Maintenance Beds</label>
+                <input type="number" id="inputMaintenance" min="0" required>
+            </div>
+        </div>
+        <button type="submit" id="saveBedBtn" class="btn btn-success full-width" style="margin-top: 1rem;">
+            Update Bed Counts Live
+        </button>
+    </form>
+</section>
+
         <!-- Community Feedback Forum -->
         <section class="feedback-section">
             <h3>Community Feedback Forum</h3>
