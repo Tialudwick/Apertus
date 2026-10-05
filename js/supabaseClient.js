@@ -103,3 +103,33 @@ export async function fetchAssignedHouse(userId) {
     }
     return data;
 }
+
+// js/supabaseClient.js (Append to existing exports)
+
+/**
+ * Fetch all houses managed by a Director
+ */
+export async function fetchHousesForDirector(directorId) {
+    const { data, error } = await supabase
+        .from('houses')
+        .select('*')
+        .eq('org_director_id', directorId)
+        .order('house_name', { ascending: true });
+
+    if (error) throw error;
+    return data;
+}
+
+/**
+ * Assign or update a manager's User ID for a specific house
+ */
+export async function assignHouseManager(houseId, newManagerUserId) {
+    const { data, error } = await supabase
+        .from('houses')
+        .update({ manager_id: newManagerUserId || null })
+        .eq('id', houseId)
+        .select();
+
+    if (error) throw error;
+    return data;
+}

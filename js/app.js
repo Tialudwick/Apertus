@@ -225,6 +225,91 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+import { 
+    supabase, 
+    fetchHousesForDirector, 
+    assignHouseManager, 
+    submitBedUpdate, 
+    fetchHouses 
+} from './supabaseClient.js';
+
+document.addEventListener('DOMContentLoaded', () => {
+    const directorPanel = document.getElementById('directorPanel');
+    const tableBody = document.getElementById('directorHouseTableBody');
+
+    // 1. Detect Director Session on Auth Change
+    supabase.auth.onAuthStateChange(async (event, session) => {
+        if (session) {
+            try {
+                // Check if user is a director for any house
+                const directorHouses = await fetchHousesForDirector(session.user.id);
+
+                if (directorHouses && directorHouses.length > 0) {
+                    directorPanel.style.display = 'block';
+                    renderDirectorTable(directorHouses);
+                } else {
+                    directorPanel.style.display = 'none';
+                }
+            } catch (err) {
+                console.error('Error loading director panel:', err);
+            }
+        } else {
+            directorPanel.style.display = 'none';
+        }
+    });
+
+    // 2. Render Director House List
+    function renderDirectorTable(houses) {
+        tableBody.innerHTML = '';
+
+        houses.forEach(house => {
+            const total = (house.available_beds || 0) + (house.occupied_beds || 0) + 
+                          (house.reserved_beds || 0) + (house.maintenance_beds || 0);
+
+            const row = document.createElement('tr');
+            row.style.borderBottom = '1px solid var(--card-border)';
+            row.innerHTML = `
+                <td style="padding: 0.75rem; font-weight: 600;">${house.house_name}</td>
+                <td style="padding: 0.75rem; color: var(--text-muted);">${house.county}</td>
+                <td style="padding: 0.75rem;">${house.available_beds} / ${total}</td>
+                <td style="padding: 0.75rem;">
+                    <input type="text" 
+                           class="manager-input" 
+                           data-house-id="${house.id}" 
+                           value="${house.manager_id || ''}" 
+                           placeholder="Paste Manager User UID"
+                           style="width: 220px; font-size: 0.8rem; padding: 0.3rem 0.5rem; background: #0f172a; border: 1px solid var(--card-border); color: #fff; border-radius: 4px;">
+                </td>
+                <td style="padding: 0.75rem; text-align: right;">
+                    <button class="btn btn-outline save-manager-btn" data-house-id="${house.id}" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">
+                        Save Manager
+                    </button>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+
+        // Attach Event Listeners to "Save Manager" buttons
+        document.querySelectorAll('.save-manager-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const houseId = e.target.dataset.houseId;
+                const inputElem = document.querySelector(`.manager-input[data-house-id="${houseId}"]`);
+                const newManagerId = inputElem.value.trim();
+
+                try {
+                    e.target.textContent = 'Saving...';
+                    await assignHouseManager(houseId, newManagerId);
+                    alert('House manager successfully assigned!');
+                } catch (err) {
+                    alert('Failed to update manager assignment. Ensure you have director privileges.');
+                } finally {
+                    e.target.textContent = 'Save Manager';
+                }
+            });
+        });
+    }
+});
+
 /**
  * Toggles UI navbar buttons based on authentication state
  */

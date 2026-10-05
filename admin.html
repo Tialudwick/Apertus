@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apertus | Maine Recovery Residence Bed Tracker</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/accessibility.css">
+    <!-- Supabase JS Client library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="dark-theme">
+    <!-- Navigation -->
+     <header role="nav-banner" class="navbar">
+        <div class="nav-container">
+                <a href="#" class="brand" aria-label="Apertus Home">
+                <img src="assets/apertus_logo.png" alt="Apertus Logo" class="brand-logo">
+                </a>
+            <div class="nav-actions">
+                <!-- Guest Auth Buttons -->
+                <button class="btn btn-blue" id="openLoginModalBtn" onclick="document.getElementById('loginModal').classList.add('active')">
+                    Manager Sign In
+                </button>
+                <!-- Authenticated Organization Portal Button -->
+                <button id="managerPortalNav" onclick="openOrgDashboard()" class="btn btn-blue" style="display: none;">
+                    Organization Dashboard
+                </button>
+                <!-- Logout Button -->
+                <button id="logoutBtn" class="btn btn-outline" style="display: none;">
+                    Log Out
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Top Header -->
+    <header role="banner" class="header-banner">
+        <div class="header-container">
+            <div class="header-title-group">
+                <h1>Maine Sober Living Bed Tracker</h1>
+                <p class="subtitle">Statewide bed availability across recovery residences</p>
+            </div>
+            
+            <div class="header-actions">
+                <div class="occupancy-stat">
+                    <span class="stat-percentage" id="totalOccupancyPct">33%</span>
+                    <span class="stat-label">occupancy</span>
+                </div>
+                <button id="addOrgBtn" class="btn btn-success">
+                    + Add organization
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Auth Bar / Status Area -->
+<div id="authStatusBanner" class="filter-card" style="margin-bottom: 1.5rem;">
+    <!-- Rendered dynamically by JS -->
+</div>
+
+<!-- Login Form Modal or Card -->
+<div id="loginCard" class="filter-card" style="display: none;">
+    <h3>House Manager Login</h3>
+    <form id="loginForm" style="margin-top: 1rem;">
+        <div class="filter-group">
+            <label for="loginEmail">Email Address</label>
+            <input type="email" id="loginEmail" placeholder="manager@example.com" required>
+        </div>
+        <div class="filter-group" style="margin-top: 0.75rem;">
+            <label for="loginPassword">Password</label>
+            <input type="password" id="loginPassword" placeholder="••••••••" required>
+        </div>
+        <button type="submit" id="loginBtn" class="btn btn-primary full-width" style="margin-top: 1rem;">
+            Log In
+        </button>
+    </form>
+</div>
+
+<!-- Admin / Director Management Panel -->
+<section id="directorPanel" class="filter-card" style="display: none; margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div>
+            <h2>Organization Director Dashboard</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Manage all network houses & assign managers</p>
+        </div>
+        <span class="badge badge-available">Director Access</span>
+    </div>
+
+    <!-- House Management Table -->
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--card-border); color: var(--text-muted);">
+                    <th style="padding: 0.75rem;">House Name</th>
+                    <th style="padding: 0.75rem;">County</th>
+                    <th style="padding: 0.75rem;">Beds (Avail/Total)</th>
+                    <th style="padding: 0.75rem;">Manager User ID</th>
+                    <th style="padding: 0.75rem; text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="directorHouseTableBody">
+                <!-- Populated dynamically by JS -->
+            </tbody>
+        </table>
+    </div>
+</section>
+
+    <!-- Dynamic Search & Filter Controls -->
+        <section class="filter-card" aria-label="Bed Directory Filters">
+            <div class="filter-grid">
+                <div class="filter-group">
+                    <label for="searchInput">Search Residence / City</label>
+                    <input type="search" id="searchInput" placeholder="e.g., Portland, Hope House...">
+                </div>
+                <div class="filter-group">
+                    <label for="regionFilter">Region</label>
+                    <select id="regionFilter">
+                        <option value="">All Regions</option>
+                        <option value="Southern Maine">Southern Maine</option>
+                        <option value="Central Maine">Central Maine</option>
+                        <option value="Western Maine">Western Maine</option>
+                        <option value="Northern Maine">Northern Maine</option>
+                        <option value="Downeast">Downeast</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="countyFilter">County</label>
+                    <select id="countyFilter">
+                        <option value="">All Counties</option>
+                        <option value="Cumberland">Cumberland</option>
+                        <option value="Androscoggin">Androscoggin</option>
+                        <option value="Kennebec">Kennebec</option>
+                        <option value="Penobscot">Penobscot</option>
+                        <option value="York">York</option>
+                        <option value="Aroostook">Aroostook</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="genderFilter">Demographic</label>
+                    <select id="genderFilter">
+                        <option value="">All Demographics</option>
+                        <option value="Men">Men</option>
+                        <option value="Women">Women</option>
+                        <option value="Co-Ed">Co-Ed</option>
+                        <option value="LGBTQ+ Affirming">LGBTQ+ Affirming</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="supportFilter">MARR Level of Support</label>
+                    <select id="supportFilter">
+                        <option value="">All Support Levels</option>
+                        <option value="Level I - Peer Run">Level I - Peer Run</option>
+                        <option value="Level II - Monitored">Level II - Monitored</option>
+                        <option value="Level III - Supervised">Level III - Supervised</option>
+                        <option value="Level IV - Service Provider">Level IV - Service Provider</option>
+                    </select>
+                </div>
+                <div class="filter-group filter-submit-container">
+                    <button type="submit" class="btn btn-blue">Submit Search</button>
+                </div>
+            </div>
+            <div class="filter-toggle-row">
+                <label class="toggle-container">
+                    <input type="checkbox" id="availableOnlyToggle">
+                    <span class="toggle-label">Show Immediate Bed Openings Only</span>
+                </label>
+            </div>
+        </section>
+
+    
+<!-- card starts here for beds available in state -->
+    <main id="main-content" role="main" class="container">
+        <!-- Auth Status / System Banner Alert -->
+        <div id="authAlertBanner" class="alert-banner" style="display: none;" role="alert"></div>
+
+        <!-- Metric KPI Cards Section -->
+        <section class="kpi-grid" aria-label="Statewide Bed Summary">
+            <div class="kpi-card">
+                <span class="badge badge-available">Available</span>
+                <div class="kpi-value" id="kpiAvailable">5</div>
+                <div class="kpi-subtext" id="kpiAvailableSub">of 12 beds</div>
+            </div>
+
+            <div class="kpi-card">
+                <span class="badge badge-occupied">Occupied</span>
+                <div class="kpi-value" id="kpiOccupied">4</div>
+                <div class="kpi-subtext" id="kpiOccupiedSub">of 12 beds</div>
+            </div>
+
+            <div class="kpi-card">
+                <span class="badge badge-reserved">Reserved</span>
+                <div class="kpi-value" id="kpiReserved">2</div>
+                <div class="kpi-subtext" id="kpiReservedSub">of 12 beds</div>
+            </div>
+
+            <div class="kpi-card">
+                <span class="badge badge-maintenance">Maintenance</span>
+                <div class="kpi-value" id="kpiMaintenance">1</div>
+                <div class="kpi-subtext" id="kpiMaintenanceSub">of 12 beds</div>
+            </div>
+        </section>
+
+        <!-- Organization Quick Filter Tabs -->
+        <div class="tab-pill-bar" role="tablist">
+            <button class="pill-tab active" role="tab" aria-selected="true" id="tabStatewide">Statewide</button>
+            <!-- Dynamic organization pills will be injected here -->
+            <button class="pill-tab" role="tab" aria-selected="false">Harbor Recovery Alliance</button>
+            <button class="pill-tab" role="tab" aria-selected="false">North Star Recovery Homes</button>
+        </div>
+
+        
+
+        <!-- Organizations Grid Section -->
+        <section class="directory-section">
+            <h2 class="section-heading">Organizations across Maine</h2>
+            
+            <div id="houseGrid" class="organizations-grid" aria-live="polite">
+                <!-- Public house cards render here dynamically -->
+                <!-- Example structure of dynamic cards rendered via JS: -->
+                <div class="org-card">
+                    <div class="org-card-header">
+                        <div>
+                            <h3 class="org-title">Harbor Recovery Alliance</h3>
+                            <p class="org-location">Cumberland County</p>
+                        </div>
+                        <span class="badge badge-secondary">2 houses</span>
+                    </div>
+                    <div class="org-card-stats">
+                        <span>3 of 8 beds available</span>
+                        <span>38% occupied</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill progress-available" style="width: 37.5%;"></div>
+                        <div class="progress-bar-fill progress-reserved" style="width: 25%;"></div>
+                        <div class="progress-bar-fill progress-occupied" style="width: 37.5%;"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Community Feedback Forum -->
+        <section class="feedback-section">
+            <h3>Community Feedback Forum</h3>
+            <div class="feedback-layout">
+                <form id="feedbackForm" class="feedback-form">
+                    <div class="filter-group">
+                        <label for="feedbackCategory">Feedback Type</label>
+                        <select id="feedbackCategory" required>
+                            <option value="Bug Report">Bug Report</option>
+                            <option value="Feature Request">Feature Request</option>
+                            <option value="Listing Discrepancy">Listing Discrepancy</option>
+                            <option value="General Feedback">General Feedback</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="feedbackMessage">Your Feedback / Suggestion</label>
+                        <textarea id="feedbackMessage" rows="4" required placeholder="Help us improve access to recovery housing..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-blue">Submit Feedback</button>
+                </form>
+                <div id="feedbackList" class="feedback-list">
+                    <!-- Community feedback items render here -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
