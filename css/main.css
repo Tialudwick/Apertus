@@ -125,7 +125,9 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
+
 /* navigation section */
+
 .nav-banner{
     background-color: #0b1120;
     border-bottom: 1px solid var(--card-border);
@@ -141,6 +143,12 @@ body {
     align-items: center;
     flex-wrap: wrap;
     gap: 1rem;
+}
+
+.nav-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
 
 }
 
