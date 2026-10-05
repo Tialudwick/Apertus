@@ -342,13 +342,13 @@ function renderHouseCards(houses) {
             <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
                 <div>
                     <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #38bdf8; font-weight: 700; margin-bottom: 0.2rem;">
-                        🏢 Organization: ${escapeHtml(parentOrg)}
+                        Organization: ${escapeHtml(parentOrg)}
                     </div>
                     <h3 style="margin: 0; color: #fff; font-size: 1.35rem; font-weight: 800;">
                         ${escapeHtml(house.house_name)}
                     </h3>
                     <p style="margin: 0.3rem 0 0 0; color: #94a3b8; font-size: 0.9rem;">
-                        📍 ${escapeHtml(house.city || 'N/A')}, ${escapeHtml(house.county || '')} County
+                        ${escapeHtml(house.city || 'N/A')}, ${escapeHtml(house.county || '')} County
                     </p>
                 </div>
 
@@ -387,17 +387,17 @@ function renderHouseCards(houses) {
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; margin-top: 1rem; font-size: 0.85rem;">
                 <div style="background: #0f172a; padding: 0.6rem 0.8rem; border-radius: 6px; border: 1px solid #1e293b;">
                     <div style="color: #94a3b8; font-size: 0.75rem;">Move-In Fee</div>
-                    <div style="color: #f8fafc; font-weight: 700; margin-top: 0.1rem; font-size: 0.95rem;">🔑 ${moveInDisplay}</div>
+                    <div style="color: #f8fafc; font-weight: 700; margin-top: 0.1rem; font-size: 0.95rem;">${moveInDisplay}</div>
                 </div>
 
                 <div style="background: #0f172a; padding: 0.6rem 0.8rem; border-radius: 6px; border: 1px solid #1e293b;">
                     <div style="color: #94a3b8; font-size: 0.75rem;">Monthly Rent</div>
-                    <div style="color: #f8fafc; font-weight: 700; margin-top: 0.1rem; font-size: 0.95rem;">💵 ${rentDisplay}</div>
+                    <div style="color: #f8fafc; font-weight: 700; margin-top: 0.1rem; font-size: 0.95rem;">${rentDisplay}</div>
                 </div>
 
                 <div style="background: #0f172a; padding: 0.6rem 0.8rem; border-radius: 6px; border: 1px solid #1e293b; grid-column: span 1 / -1;">
                     <div style="color: #94a3b8; font-size: 0.75rem;">Insurance / Payment Accepted</div>
-                    <div style="color: #38bdf8; font-weight: 600; margin-top: 0.1rem;">💳 ${escapeHtml(insuranceDisplay)}</div>
+                    <div style="color: #38bdf8; font-weight: 600; margin-top: 0.1rem;">${escapeHtml(insuranceDisplay)}</div>
                 </div>
             </div>
 
