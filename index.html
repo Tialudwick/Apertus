@@ -10,6 +10,31 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="dark-theme">
+    <!-- Navigation -->
+     <header role="banner" class="navbar">
+        <div class="nav-container">
+                <a href="#" class="brand" aria-label="Apertus Home">
+                <img src="assets/apertus_logo.png" alt="Apertus Logo" class="brand-logo">
+                </a>
+            <div class="nav-actions">
+                <!-- Guest Auth Buttons -->
+                <button id="openSignUpModalBtn" onclick="document.getElementById('signupModal').classList.add('active')" class="btn btn-outline">
+                    📝 Register Organization
+                </button>
+                <button id="openLoginModalBtn" onclick="document.getElementById('loginModal').classList.add('active')" class="btn btn-outline">
+                    🔑 Manager Sign In
+                </button>
+                <!-- Authenticated Organization Portal Button -->
+                <button id="managerPortalNav" onclick="openOrgDashboard()" class="btn btn-primary" style="display: none;">
+                    🏢 Organization Dashboard
+                </button>
+                <!-- Logout Button -->
+                <button id="logoutBtn" class="btn btn-outline" style="display: none;">
+                    🚪 Log Out
+                </button>
+            </div>
+        </div>
+    </header>
 
     <!-- Top Header -->
     <header role="banner" class="header-banner">
