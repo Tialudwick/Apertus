@@ -1,11 +1,12 @@
 // Safe environment variable retrieval with fallback support
 const SUPABASE_URL = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_SUPABASE_URL)
     ? import.meta.env.VITE_SUPABASE_URL
-    : 'https://YOUR_PROJECT_ID.supabase.co'; // Replace with your project URL if not using .env
+    : 'https://embqgccnlipmjwyvagrv.supabase.co'; // Replace with your project URL if not using .env
 
 const SUPABASE_ANON_KEY = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_SUPABASE_ANON_KEY)
     ? import.meta.env.VITE_SUPABASE_ANON_KEY
-    : 'YOUR_ACTUAL_ANON_KEY'; // Replace with your anon key if not using .env
+    : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtYnFnY2NubGlwbWp3eXZhZ3J2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1NTkwNzgsImV4cCI6MjEwNjEzNTA3OH0.k5QCmInmcEUbAVv2T8r22ZurK9XGaZa0K57RRWDAiQo'; 
+    // Replace with your anon key if not using .env
 
 export const supabase = (typeof window !== 'undefined' && window.supabase)
     ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
