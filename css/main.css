@@ -435,3 +435,170 @@ body {
 .modal-footer-note a {
     color: var(--accent);
 }
+
+/* ==========================================================================
+   KPI Summary Section
+   ========================================================================== */
+
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.kpi-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.kpi-value {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin: 0.75rem 0 0.1rem;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.kpi-subtext {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* Badges */
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.badge-available {
+    background-color: var(--badge-available-bg);
+    color: var(--badge-available-text);
+}
+
+.badge-occupied {
+    background-color: var(--badge-occupied-bg);
+    color: var(--badge-occupied-text);
+}
+
+.badge-reserved {
+    background-color: var(--badge-reserved-bg);
+    color: var(--badge-reserved-text);
+}
+
+.badge-maintenance {
+    background-color: var(--badge-maint-bg);
+    color: var(--badge-maint-text);
+}
+
+.badge-secondary {
+    background-color: #2a2e2a;
+    color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Pill Tabs Section
+   ========================================================================== */
+
+.tab-pill-bar {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+}
+
+.pill-tab {
+    background-color: #222522;
+    color: var(--text-muted);
+    border: none;
+    padding: 0.5rem 1.25rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.pill-tab:hover {
+    background-color: #2c302c;
+    color: var(--text-primary);
+}
+
+.pill-tab.active {
+    background-color: var(--brand-green);
+    color: #ffffff;
+}
+
+/* ==========================================================================
+   Filter Card Styling
+   ========================================================================== */
+
+.filter-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2.5rem;
+}
+
+.filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    align-items: end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.filter-group label {
+    font-size: 0.825rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.filter-group input,
+.filter-group select,
+.filter-group textarea {
+    background-color: #141614;
+    border: 1px solid var(--card-border);
+    color: var(--text-primary);
+    padding: 0.6rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    outline: none;
+}
+
+.filter-group input:focus,
+.filter-group select:focus,
+.filter-group textarea:focus {
+    border-color: var(--brand-green-light);
+}
+
+.filter-toggle-row {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--card-border);
+}
+
+.toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
