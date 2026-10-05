@@ -141,6 +141,35 @@
         <!-- Auth Status Banner Alert -->
         <div id="authAlertBanner" class="alert-banner" style="display: none;" role="alert"></div>
 
+        
+
+        <!-- Metric KPI Cards Section -->
+        <section class="kpi-grid" aria-label="Statewide Bed Summary">
+            <div class="kpi-card">
+                <span class="badge badge-available">Available</span>
+                <div class="kpi-value" id="kpiAvailable">5</div>
+                <div class="kpi-subtext" id="kpiAvailableSub">of 12 beds</div>
+            </div>
+
+            <div class="kpi-card">
+                <span class="badge badge-occupied">Occupied</span>
+                <div class="kpi-value" id="kpiOccupied">4</div>
+                <div class="kpi-subtext" id="kpiOccupiedSub">of 12 beds</div>
+            </div>
+
+            <div class="kpi-card">
+                <span class="badge badge-reserved">Reserved</span>
+                <div class="kpi-value" id="kpiReserved">2</div>
+                <div class="kpi-subtext" id="kpiReservedSub">of 12 beds</div>
+            </div>
+
+            <div class="kpi-card">
+                <span class="badge badge-maintenance">Maintenance</span>
+                <div class="kpi-value" id="kpiMaintenance">1</div>
+                <div class="kpi-subtext" id="kpiMaintenanceSub">of 12 beds</div>
+            </div>
+        </section>
+
         <!-- Dynamic Search & Filter Controls -->
         <section class="filter-card" aria-label="Bed Directory Filters">
             <div class="filter-grid">
@@ -199,33 +228,6 @@
                     <input type="checkbox" id="availableOnlyToggle">
                     <span class="toggle-label">Show Immediate Bed Openings Only</span>
                 </label>
-            </div>
-        </section>
-
-        <!-- Metric KPI Cards Section -->
-        <section class="kpi-grid" aria-label="Statewide Bed Summary">
-            <div class="kpi-card">
-                <span class="badge badge-available">Available</span>
-                <div class="kpi-value" id="kpiAvailable">5</div>
-                <div class="kpi-subtext" id="kpiAvailableSub">of 12 beds</div>
-            </div>
-
-            <div class="kpi-card">
-                <span class="badge badge-occupied">Occupied</span>
-                <div class="kpi-value" id="kpiOccupied">4</div>
-                <div class="kpi-subtext" id="kpiOccupiedSub">of 12 beds</div>
-            </div>
-
-            <div class="kpi-card">
-                <span class="badge badge-reserved">Reserved</span>
-                <div class="kpi-value" id="kpiReserved">2</div>
-                <div class="kpi-subtext" id="kpiReservedSub">of 12 beds</div>
-            </div>
-
-            <div class="kpi-card">
-                <span class="badge badge-maintenance">Maintenance</span>
-                <div class="kpi-value" id="kpiMaintenance">1</div>
-                <div class="kpi-subtext" id="kpiMaintenanceSub">of 12 beds</div>
             </div>
         </section>
 
