@@ -350,11 +350,11 @@ function renderHouseCards(houses) {
                     </span>
 
                     <span title="MARR Level of Support" style="background: #334155; color: #38bdf8; padding: 0.2rem; border-radius: 50%; font-size: 0.75rem; font-weight: bold; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #475569;">
-                        MARR Certified: ${house.level_of_support || 1}
+                        L${house.level_of_support || 1}
                     </span>
 
                     <span title="MARR Certified" style="background: #334155; color: #38bdf8; padding: 0.2rem; border-radius: 50%; font-size: 0.75rem; font-weight: bold; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #475569;">
-                        L${house.marr_certified || "N/A"}
+                        MARR Certified: ${house.marr_certified || "N/A"}
                     </span>
 
                     <div style="background: #0f172a; padding: 0.4rem 0.85rem; border-radius: 6px; text-align: center; border: 1px solid #1e293b;">
