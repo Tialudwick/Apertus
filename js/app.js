@@ -641,3 +641,33 @@ window.openHoldModal = (houseId, houseName) => {
 window.closeModal = (modalId) => {
     document.getElementById(modalId)?.classList.remove('active');
 };
+
+// updated bed numbers from manager
+import { supabase, submitBedUpdate, fetchHouses, isWithin7Days } from './supabaseClient.js';
+
+document.addEventListener('DOMContentLoaded', () => {
+    const updateForm = document.getElementById('updateBedForm');
+
+    if (updateForm) {
+        updateForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Get house ID from dataset or select input
+            const houseId = updateForm.dataset.houseId; 
+
+            const bedMetrics = {
+                available: document.getElementById('inputAvailable').value,
+                occupied: document.getElementById('inputOccupied').value,
+                reserved: document.getElementById('inputReserved').value,
+                maintenance: document.getElementById('inputMaintenance').value
+            };
+
+            try {
+                await submitBedUpdate(houseId, bedMetrics);
+                alert('Bed status successfully updated live!');
+            } catch (err) {
+                alert('Failed to update bed status. Check your network connection.');
+            }
+        });
+    }
+});

@@ -19,3 +19,48 @@ export function isWithin7Days(dateString) {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     return date >= sevenDaysAgo;
 }
+
+/**
+ * Submits updated bed metrics to the Supabase cloud database
+ * @param {string} houseId - UUID of the house record
+ * @param {Object} bedMetrics - { available, occupied, reserved, maintenance }
+ */
+export async function submitBedUpdate(houseId, bedMetrics) {
+    const { available, occupied, reserved, maintenance } = bedMetrics;
+
+    const { data, error } = await supabase
+        .from('houses')
+        .update({
+            available_beds: Number(available),
+            occupied_beds: Number(occupied),
+            reserved_beds: Number(reserved),
+            maintenance_beds: Number(maintenance),
+            updated_at: new Date().toISOString()
+        })
+        .eq('id', houseId)
+        .select();
+
+    if (error) {
+        console.error('Error updating bed counts in Supabase:', error.message);
+        throw error;
+    }
+
+    return data;
+}
+
+/**
+ * Fetches all house bed records from Supabase
+ */
+export async function fetchHouses() {
+    const { data, error } = await supabase
+        .from('houses')
+        .select('*')
+        .order('house_name', { ascending: true });
+
+    if (error) {
+        console.error('Error fetching houses from Supabase:', error.message);
+        throw error;
+    }
+
+    return data;
+}
