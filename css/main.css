@@ -1,22 +1,9 @@
-/*:root {
-    --bg-dark: #0f172a;
-    --card-bg: #1e293b;
-    --card-border: #334155;
-    --primary: #2563eb;
-    --primary-hover: #1d4ed8;
-    --success: #16a34a;
-    --success-bg: rgba(22, 163, 74, 0.15);
-    --danger: #dc2626;
-    --danger-bg: rgba(220, 38, 38, 0.15);
-    --text-main: #f8fafc;
-    --text-muted: #94a3b8;
-    --accent: #38bdf8;
-} */
+
 :root {
     /* Deep space / obsidian canvas & elevated glass surfaces */
     --bg-dark: #090d16;
     --card-bg: #131c2e;
-    --card-border: #223048;
+    --card-border: #7586a5;
     --card-hover: #1b2c45;
 
     /* Tech-forward brand accents (Electric Indigo + Coastal Cyan) */

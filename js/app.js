@@ -250,9 +250,9 @@ async function renderOrgDashboard() {
             beds(total_beds, available_beds, last_updated_at)
         `);
 
-    if (currentUserProfile.company_id) {
+    if (currentUserProfile?.company_id) {
         query = query.eq('company_id', currentUserProfile.company_id);
-    } else if (currentUserProfile.house_id) {
+    } else if (currentUserProfile?.house_id) {
         query = query.eq('id', currentUserProfile.house_id);
     }
 
@@ -370,11 +370,13 @@ async function handleLogout() {
 }
 
 /**
- * Fetches and renders public directory house cards on the main landing page
+ * Fetches and renders all sober houses from Supabase into individual cards
  */
 async function fetchAndRenderHouses() {
     const grid = document.getElementById('houseGrid');
     if (!grid) return;
+
+    grid.innerHTML = '<div class="loading-spinner" role="status">Loading sober houses...</div>';
 
     const search = document.getElementById('searchInput')?.value.trim();
     const region = document.getElementById('regionFilter')?.value;
@@ -383,6 +385,7 @@ async function fetchAndRenderHouses() {
     const support = document.getElementById('supportFilter')?.value;
     const availableOnly = document.getElementById('availableOnlyToggle')?.checked;
 
+    // Fetch all houses with joined company and bed details from Supabase
     let query = supabase
         .from('houses')
         .select(`
@@ -390,8 +393,7 @@ async function fetchAndRenderHouses() {
             companies(name),
             beds(total_beds, available_beds, last_updated_at),
             hold_requests(id, expires_at, status)
-        `)
-        .eq('is_marr_certified', true);
+        `);
 
     if (region) query = query.eq('region', region);
     if (county) query = query.eq('county', county);
@@ -407,15 +409,17 @@ async function fetchAndRenderHouses() {
 
     let filtered = houses || [];
 
+    // Filter by search keyword (House Name, City, or Organization Name)
     if (search) {
         const term = search.toLowerCase();
         filtered = filtered.filter(h => 
-            h.name.toLowerCase().includes(term) || 
-            h.city.toLowerCase().includes(term) ||
-            h.companies?.name.toLowerCase().includes(term)
+            (h.name && h.name.toLowerCase().includes(term)) || 
+            (h.city && h.city.toLowerCase().includes(term)) ||
+            (h.companies?.name && h.companies.name.toLowerCase().includes(term))
         );
     }
 
+    // Filter by available beds toggle
     if (availableOnly) {
         filtered = filtered.filter(h => h.beds && h.beds.available_beds > 0);
     }
@@ -424,63 +428,116 @@ async function fetchAndRenderHouses() {
 }
 
 /**
- * Renders WCAG-compliant cards on the public main page
+ * Renders public summary banner metrics
+ */
+function renderPublicSummaryBanner(totalHouses, totalAvailable, totalCapacity) {
+    const banner = document.getElementById('publicSummaryBanner');
+    if (!banner) return;
+
+    banner.innerHTML = `
+        <div class="summary-stats">
+            <span><strong>${totalHouses}</strong> Residences Listed</span>
+            <span><strong>${totalAvailable}</strong> Open Beds Available</span>
+            <span><strong>${totalCapacity}</strong> Total Capacity</span>
+        </div>
+    `;
+}
+
+/**
+ * Renders individual cards for each sober house listed in Supabase
  */
 function renderHouseCards(houses) {
     const grid = document.getElementById('houseGrid');
+    if (!grid) return;
+
     grid.innerHTML = '';
 
-    if (houses.length === 0) {
+    if (!houses || houses.length === 0) {
         grid.innerHTML = '<div class="no-results" role="status">No recovery residences found matching your criteria.</div>';
         return;
     }
 
+    // Calculate public aggregate metrics
+    let totalAvailableBeds = 0;
+    let totalCapacity = 0;
+
+    houses.forEach(house => {
+        const bedData = house.beds || { total_beds: 0, available_beds: 0 };
+        const activeHolds = (house.hold_requests || []).filter(r => r.status === 'active' && new Date(r.expires_at) > new Date());
+        const netAvailable = Math.max(0, bedData.available_beds - activeHolds.length);
+
+        totalAvailableBeds += netAvailable;
+        totalCapacity += (bedData.total_beds || 0);
+    });
+
+    renderPublicSummaryBanner(houses.length, totalAvailableBeds, totalCapacity);
+
+    // Create an individual card element for each sober house
     houses.forEach(house => {
         const bedData = house.beds || { total_beds: 0, available_beds: 0, last_updated_at: null };
         const isFresh = isWithin7Days(bedData.last_updated_at);
         const activeHolds = (house.hold_requests || []).filter(r => r.status === 'active' && new Date(r.expires_at) > new Date());
         const netAvailable = Math.max(0, bedData.available_beds - activeHolds.length);
+        
+        const orgName = house.companies?.name || 'Independent Residence';
+        const houseName = house.name || 'Unnamed Sober House';
+        const genderServed = house.gender_served || 'All Populations';
+        const supportLevel = house.support_level || 'Peer-Run Recovery';
 
         const card = document.createElement('article');
         card.className = 'house-card';
-        card.setAttribute('aria-label', `${house.name}, ${house.city}`);
+        card.setAttribute('aria-label', `${houseName}, operated by ${orgName}`);
 
         card.innerHTML = `
             <div class="card-header">
                 <div>
-                    <span class="company-tag">${escapeHtml(house.companies?.name || 'Independent')}</span>
-                    <h3>${escapeHtml(house.name)}</h3>
-                    <p class="location-tag">📍 ${escapeHtml(house.city)}, ${escapeHtml(house.county)} Co. (${escapeHtml(house.region)})</p>
+                    <!-- Organization / Company Name -->
+                    <span class="company-tag">🏢 ${escapeHtml(orgName)}</span>
+                    
+                    <!-- Sober House Name -->
+                    <h3 class="house-title">${escapeHtml(houseName)}</h3>
+                    
+                    <!-- Location -->
+                    <p class="location-tag">📍 ${escapeHtml(house.city || 'N/A')}, ${escapeHtml(house.county || '')} Co. (${escapeHtml(house.region || 'Maine')})</p>
                 </div>
-                <div class="marr-badge" title="MARR Certified Residence">
-                    ✓ MARR Verified
-                </div>
+                ${house.is_marr_certified ? `
+                    <div class="marr-badge" title="MARR Certified Recovery Residence">
+                        ✓ MARR Verified
+                    </div>
+                ` : ''}
             </div>
 
+            <!-- Bed Count & Capacity Display -->
             <div class="bed-stat-box ${netAvailable > 0 ? 'status-open' : 'status-full'}">
                 <div class="bed-count-number">${netAvailable}</div>
                 <div class="bed-count-label">
-                    ${netAvailable === 1 ? 'Open Bed' : 'Open Beds'} 
-                    <small>(${bedData.total_beds} Capacity)</small>
+                    <strong>${netAvailable === 1 ? 'Open Bed Available' : 'Open Beds Available'}</strong>
+                    <small>out of ${bedData.total_beds} Total Capacity</small>
                 </div>
             </div>
 
+            <!-- Population Served & House Details -->
             <div class="card-meta">
-                <span class="meta-pill">👤 ${escapeHtml(house.gender_served)}</span>
-                <span class="meta-pill">🛡️ ${escapeHtml(house.support_level)}</span>
+                <span class="meta-pill" title="Population Served">
+                    👤 <strong>Serves:</strong> ${escapeHtml(genderServed)}
+                </span>
+                <span class="meta-pill" title="Level of Support">
+                    🛡️ <strong>Support:</strong> ${escapeHtml(supportLevel)}
+                </span>
                 <span class="meta-pill ${isFresh ? 'fresh-updated' : 'stale-updated'}">
-                    ⏱️ ${isFresh ? 'Updated < 7 days ago' : 'Needs Verification Update'}
+                    ⏱️ ${isFresh ? 'Bed info updated recently' : 'Needs Verification Update'}
                 </span>
             </div>
 
-            ${activeHolds.length > 0 ? `<p class="hold-warning">⚠️ ${activeHolds.length} 24-hr hold(s) currently pending on this house.</p>` : ''}
+            ${activeHolds.length > 0 ? `<p class="hold-warning">⚠️ ${activeHolds.length} temporary 24-hr hold(s) pending on this house.</p>` : ''}
 
+            <!-- Contact & Hold Action Buttons -->
             <div class="card-actions">
-                <button class="btn btn-secondary" onclick="openHoldModal('${house.id}', '${escapeHtml(house.name)}')" ${netAvailable === 0 ? 'disabled' : ''}>
-                    ⏱ Hold Bed for 24 Hours
+                <button class="btn btn-secondary" onclick="openHoldModal('${house.id}', '${escapeHtml(houseName)}')" ${netAvailable === 0 ? 'disabled' : ''}>
+                    ⏱ Hold Bed (24 Hours)
                 </button>
-                <a href="tel:${escapeHtml(house.phone || '')}" class="btn btn-primary" ${!house.phone ? 'aria-disabled="true"' : ''}>
-                    📞 Contact Residence
+                <a href="${house.phone ? 'tel:' + escapeHtml(house.phone) : '#'}" class="btn btn-primary" ${!house.phone ? 'aria-disabled="true"' : ''}>
+                    📞 Contact ${escapeHtml(houseName)}
                 </a>
             </div>
         `;
