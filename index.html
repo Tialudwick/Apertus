@@ -36,66 +36,7 @@
         </div>
     </header>
 
-    <!-- Top Header -->
-    <header role="banner" class="header-banner">
-        <div class="header-container">
-            <div class="header-title-group">
-                <h1>Maine Sober Living Bed Tracker</h1>
-                <p class="subtitle">Statewide bed availability across recovery residences</p>
-            </div>
-            
-            <div class="header-actions">
-                <div class="occupancy-stat">
-                    <span class="stat-percentage" id="totalOccupancyPct">33%</span>
-                    <span class="stat-label">occupancy</span>
-                </div>
-                <button id="addOrgBtn" class="btn btn-success">
-                    + Add organization
-                </button>
-            </div>
-        </div>
-    </header>
-
-    <main id="main-content" role="main" class="container">
-        <!-- Auth Status / System Banner Alert -->
-        <div id="authAlertBanner" class="alert-banner" style="display: none;" role="alert"></div>
-
-        <!-- Metric KPI Cards Section -->
-        <section class="kpi-grid" aria-label="Statewide Bed Summary">
-            <div class="kpi-card">
-                <span class="badge badge-available">Available</span>
-                <div class="kpi-value" id="kpiAvailable">5</div>
-                <div class="kpi-subtext" id="kpiAvailableSub">of 12 beds</div>
-            </div>
-
-            <div class="kpi-card">
-                <span class="badge badge-occupied">Occupied</span>
-                <div class="kpi-value" id="kpiOccupied">4</div>
-                <div class="kpi-subtext" id="kpiOccupiedSub">of 12 beds</div>
-            </div>
-
-            <div class="kpi-card">
-                <span class="badge badge-reserved">Reserved</span>
-                <div class="kpi-value" id="kpiReserved">2</div>
-                <div class="kpi-subtext" id="kpiReservedSub">of 12 beds</div>
-            </div>
-
-            <div class="kpi-card">
-                <span class="badge badge-maintenance">Maintenance</span>
-                <div class="kpi-value" id="kpiMaintenance">1</div>
-                <div class="kpi-subtext" id="kpiMaintenanceSub">of 12 beds</div>
-            </div>
-        </section>
-
-        <!-- Organization Quick Filter Tabs -->
-        <div class="tab-pill-bar" role="tablist">
-            <button class="pill-tab active" role="tab" aria-selected="true" id="tabStatewide">Statewide</button>
-            <!-- Dynamic organization pills will be injected here -->
-            <button class="pill-tab" role="tab" aria-selected="false">Harbor Recovery Alliance</button>
-            <button class="pill-tab" role="tab" aria-selected="false">North Star Recovery Homes</button>
-        </div>
-
-        <!-- Dynamic Search & Filter Controls -->
+    <!-- Dynamic Search & Filter Controls -->
         <section class="filter-card" aria-label="Bed Directory Filters">
             <div class="filter-grid">
                 <div class="filter-group">
@@ -156,6 +97,67 @@
                 </label>
             </div>
         </section>
+
+    <!-- Top Header -->
+    <header role="banner" class="header-banner">
+        <div class="header-container">
+            <div class="header-title-group">
+                <h1>Maine Sober Living Bed Tracker</h1>
+                <p class="subtitle">Statewide bed availability across recovery residences</p>
+            </div>
+            
+            <div class="header-actions">
+                <div class="occupancy-stat">
+                    <span class="stat-percentage" id="totalOccupancyPct">33%</span>
+                    <span class="stat-label">occupancy</span>
+                </div>
+                <button id="addOrgBtn" class="btn btn-success">
+                    + Add organization
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main id="main-content" role="main" class="container">
+        <!-- Auth Status / System Banner Alert -->
+        <div id="authAlertBanner" class="alert-banner" style="display: none;" role="alert"></div>
+
+        <!-- Metric KPI Cards Section -->
+        <section class="kpi-grid" aria-label="Statewide Bed Summary">
+            <div class="kpi-card">
+                <span class="badge badge-available">Available</span>
+                <div class="kpi-value" id="kpiAvailable">5</div>
+                <div class="kpi-subtext" id="kpiAvailableSub">of 12 beds</div>
+            </div>
+
+            <div class="kpi-card">
+                <span class="badge badge-occupied">Occupied</span>
+                <div class="kpi-value" id="kpiOccupied">4</div>
+                <div class="kpi-subtext" id="kpiOccupiedSub">of 12 beds</div>
+            </div>
+
+            <div class="kpi-card">
+                <span class="badge badge-reserved">Reserved</span>
+                <div class="kpi-value" id="kpiReserved">2</div>
+                <div class="kpi-subtext" id="kpiReservedSub">of 12 beds</div>
+            </div>
+
+            <div class="kpi-card">
+                <span class="badge badge-maintenance">Maintenance</span>
+                <div class="kpi-value" id="kpiMaintenance">1</div>
+                <div class="kpi-subtext" id="kpiMaintenanceSub">of 12 beds</div>
+            </div>
+        </section>
+
+        <!-- Organization Quick Filter Tabs -->
+        <div class="tab-pill-bar" role="tablist">
+            <button class="pill-tab active" role="tab" aria-selected="true" id="tabStatewide">Statewide</button>
+            <!-- Dynamic organization pills will be injected here -->
+            <button class="pill-tab" role="tab" aria-selected="false">Harbor Recovery Alliance</button>
+            <button class="pill-tab" role="tab" aria-selected="false">North Star Recovery Homes</button>
+        </div>
+
+        
 
         <!-- Organizations Grid Section -->
         <section class="directory-section">
