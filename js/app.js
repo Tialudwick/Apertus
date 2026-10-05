@@ -101,7 +101,7 @@ function setupEventListeners() {
                 }
 
                 await submitBedUpdate(currentManagerHouse.id, bedMetrics);
-                alert('⚡ Bed counts updated live in Supabase cloud!');
+                alert('Bed counts updated live in Supabase cloud!');
                 await fetchAndRenderHouses();
             } catch (err) {
                 alert('Permission denied or network error. Could not update bed counts.');
@@ -314,17 +314,6 @@ function renderHouseCards(houses) {
     grid.innerHTML = '';
 
     if (!houses || houses.length === 0) {
-        grid.innerHTML = '<div class="no-results">No recovery residences found matching your criteria.</div>';
-        return;
-    }
-
-    function renderHouseCards(houses) {
-    const grid = document.getElementById('houseGrid');
-    if (!grid) return;
-
-    grid.innerHTML = '';
-
-    if (!houses || houses.length === 0) {
         grid.innerHTML = '<div class="no-results" style="padding: 1rem; color: var(--text-muted);">No recovery residences found matching your criteria.</div>';
         return;
     }
@@ -396,8 +385,6 @@ function renderHouseCards(houses) {
         grid.appendChild(card);
     });
 }
-}
-
 
 async function handleFeedbackSubmit(e) {
     e.preventDefault();
