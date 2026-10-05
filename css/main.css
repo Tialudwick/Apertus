@@ -584,8 +584,8 @@ body {
     transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
-.btn-primary {
-    background: var(--primary);
+.btn-blue {
+    background: #7dd3fc;
     color: #ffffff;
 }
 
