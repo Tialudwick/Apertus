@@ -1,4 +1,4 @@
-:root {
+/*:root {
     --bg-dark: #0f172a;
     --card-bg: #1e293b;
     --card-border: #334155;
@@ -11,6 +11,31 @@
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
     --accent: #38bdf8;
+} */
+:root {
+    /* Deep space / obsidian canvas & elevated glass surfaces */
+    --bg-dark: #090d16;
+    --card-bg: #131c2e;
+    --card-border: #223048;
+    --card-hover: #1b2c45;
+
+    /* Tech-forward brand accents (Electric Indigo + Coastal Cyan) */
+    --primary: #4f46e5;
+    --primary-hover: #4338ca;
+    --accent: #06b6d4;
+    --accent-glow: rgba(6, 182, 212, 0.20);
+
+    /* Operational status indicators */
+    --success: #10b981;         /* Available bed (Emerald Neon) */
+    --success-bg: rgba(16, 185, 129, 0.12);
+    --warning: #f59e0b;         /* Pending / Hold status */
+    --warning-bg: rgba(245, 158, 11, 0.12);
+    --danger: #f43f5e;          /* Bed full / Unavailable (Vibrant Rose) */
+    --danger-bg: rgba(244, 63, 94, 0.12);
+
+    /* High-contrast typography */
+    --text-main: #f8fafc;
+    --text-muted: #8492a6;
 }
 
 * {
