@@ -1,27 +1,48 @@
+/* ==========================================================================
+   Maine Recovery Bed Tracker - Complete Consolidated Stylesheet
+   ========================================================================== */
 
 :root {
     /* Deep space / obsidian canvas & elevated glass surfaces */
     --bg-dark: #090d16;
     --card-bg: #131c2e;
-    --card-border: #7586a5;
+    --card-border: #23334d;
     --card-hover: #1b2c45;
 
-    /* Tech-forward brand accents (Electric Indigo + Coastal Cyan) */
+    /* Tech-forward brand accents */
     --primary: #4f46e5;
     --primary-hover: #4338ca;
     --accent: #06b6d4;
     --accent-glow: rgba(6, 182, 212, 0.20);
 
-    /* Operational status indicators */
-    --success: #10b981;         /* Available bed (Emerald Neon) */
+    /* Brand Green */
+    --brand-green: #059669;
+    --brand-green-hover: #047857;
+    --brand-green-light: #34d399;
+
+    /* Operational status & badge colors */
+    --success: #10b981;             /* Available bed */
     --success-bg: rgba(16, 185, 129, 0.12);
-    --warning: #f59e0b;         /* Pending / Hold status */
+    --warning: #f59e0b;             /* Pending / Reserved status */
     --warning-bg: rgba(245, 158, 11, 0.12);
-    --danger: #f43f5e;          /* Bed full / Unavailable (Vibrant Rose) */
+    --danger: #f43f5e;              /* Full / Unavailable */
     --danger-bg: rgba(244, 63, 94, 0.12);
+
+    --badge-available-bg: rgba(16, 185, 129, 0.15);
+    --badge-available-text: #34d399;
+
+    --badge-occupied-bg: rgba(6, 182, 212, 0.15);
+    --badge-occupied-text: #38bdf8;
+
+    --badge-reserved-bg: rgba(245, 158, 11, 0.15);
+    --badge-reserved-text: #fbbf24;
+
+    --badge-maint-bg: rgba(148, 163, 184, 0.15);
+    --badge-maint-text: #94a3b8;
 
     /* High-contrast typography */
     --text-main: #f8fafc;
+    --text-primary: #f8fafc;
     --text-muted: #8492a6;
 }
 
@@ -45,15 +66,18 @@ body {
     padding: 0 1rem;
 }
 
-/* Navbar */
-.navbar {
+/* ==========================================================================
+   Header & Navbar Layout
+   ========================================================================== */
+
+.header-banner {
     background-color: #0b1120;
     border-bottom: 1px solid var(--card-border);
-    padding: 1rem 0;
+    padding: 1.5rem 0;
     margin-bottom: 2rem;
 }
 
-.nav-container {
+.header-container {
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 1rem;
@@ -64,28 +88,58 @@ body {
     gap: 1rem;
 }
 
-/* Fix the image sizing inside the anchor */
+.header-title-group h1 {
+    font-size: 1.85rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    color: var(--text-main);
+}
+
+.header-title-group .subtitle {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.occupancy-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.stat-percentage {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--badge-available-text);
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
 .brand {
     display: flex;
     align-items: center;
-    height: 40px; /* Desired height in navbar */
+    height: 40px;
     text-decoration: none;
-    overflow: hidden; /* Prevents overflow */
+    overflow: hidden;
 }
 
 .brand-logo {
-    max-height: 100%; /* Constrains image height to the parent link */
-    max-width: 100%;  /* Constrains image width */
-    width: auto;      /* Keeps correct aspect ratio */
+    max-height: 100%;
+    max-width: 100%;
+    width: auto;
     object-fit: contain;
     display: block;
-}
-
-
-.nav-actions {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
 }
 
 /* Alert Banner */
@@ -112,36 +166,134 @@ body {
     margin-left: 0.5rem;
 }
 
-/* Hero Section */
-.hero-section {
-    text-align: center;
+/* ==========================================================================
+   KPI Summary Metric Cards
+   ========================================================================== */
+
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
     margin-bottom: 2rem;
 }
 
-.hero-section h2 {
-    font-size: 2rem;
-    margin-bottom: 0.5rem;
+.kpi-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
-.hero-section p {
+.kpi-card:hover {
+    border-color: #384d70;
+    transform: translateY(-2px);
+}
+
+.kpi-value {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin: 0.75rem 0 0.1rem;
+    color: var(--text-main);
+    line-height: 1;
+}
+
+.kpi-subtext {
+    font-size: 0.85rem;
     color: var(--text-muted);
-    max-width: 600px;
-    margin: 0 auto;
 }
 
-/* Filter Section */
+/* Badges */
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.badge-available {
+    background-color: var(--badge-available-bg);
+    color: var(--badge-available-text);
+}
+
+.badge-occupied {
+    background-color: var(--badge-occupied-bg);
+    color: var(--badge-occupied-text);
+}
+
+.badge-reserved {
+    background-color: var(--badge-reserved-bg);
+    color: var(--badge-reserved-text);
+}
+
+.badge-maintenance {
+    background-color: var(--badge-maint-bg);
+    color: var(--badge-maint-text);
+}
+
+.badge-secondary {
+    background-color: #0f172a;
+    border: 1px solid var(--card-border);
+    color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Pill Tabs Navigation
+   ========================================================================== */
+
+.tab-pill-bar {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+}
+
+.pill-tab {
+    background-color: #0f172a;
+    color: var(--text-muted);
+    border: 1px solid var(--card-border);
+    padding: 0.5rem 1.25rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.pill-tab:hover {
+    background-color: var(--card-hover);
+    color: var(--text-main);
+}
+
+.pill-tab.active {
+    background-color: var(--brand-green);
+    border-color: var(--brand-green-light);
+    color: #ffffff;
+}
+
+/* ==========================================================================
+   Filter & Search Controls Section
+   ========================================================================== */
+
 .filter-card {
     background: var(--card-bg);
     border: 1px solid var(--card-border);
     border-radius: 12px;
     padding: 1.5rem;
-    margin-bottom: 2rem;
+    margin-bottom: 2.5rem;
 }
 
 .filter-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 1rem;
+    align-items: end;
 }
 
 .filter-group {
@@ -151,18 +303,28 @@ body {
 }
 
 .filter-group label {
-    font-size: 0.85rem;
+    font-size: 0.825rem;
     font-weight: 600;
     color: var(--text-muted);
 }
 
-.filter-group input, .filter-group select, .filter-group textarea {
+.filter-group input, 
+.filter-group select, 
+.filter-group textarea {
     background: #0f172a;
     border: 1px solid var(--card-border);
     color: var(--text-main);
     padding: 0.6rem 0.8rem;
     border-radius: 6px;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.filter-group input:focus, 
+.filter-group select:focus, 
+.filter-group textarea:focus {
+    border-color: var(--accent);
 }
 
 .filter-toggle-row {
@@ -176,31 +338,73 @@ body {
     align-items: center;
     gap: 0.5rem;
     cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--text-main);
 }
 
-/* House Grid (Public Directory) */
+/* ==========================================================================
+   Organization & House Directory Cards
+   ========================================================================== */
+
+.section-heading {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 1.25rem;
+}
+
+.organizations-grid,
 .house-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 1.5rem;
+    gap: 1.25rem;
     margin-bottom: 3rem;
 }
 
+.org-card,
 .house-card {
     background: var(--card-bg);
     border: 1px solid var(--card-border);
     border-radius: 12px;
-    padding: 1.25rem;
+    padding: 1.5rem;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
+.org-card:hover,
+.house-card:hover {
+    border-color: #384d70;
+    transform: translateY(-2px);
+}
+
+.org-card-header,
 .card-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 1rem;
+}
+
+.org-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin: 0 0 0.25rem 0;
+    color: var(--text-main);
+}
+
+.org-location {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.org-card-stats {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
 }
 
 .company-tag {
@@ -219,7 +423,33 @@ body {
     font-weight: 600;
 }
 
-/* Bed Count Display Box */
+/* Capacity Multi-Segmented Progress Bar */
+.progress-bar-container {
+    height: 8px;
+    width: 100%;
+    background-color: #0f172a;
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+}
+
+.progress-bar-fill {
+    height: 100%;
+}
+
+.progress-available {
+    background-color: var(--badge-available-text);
+}
+
+.progress-reserved {
+    background-color: var(--badge-reserved-text);
+}
+
+.progress-occupied {
+    background-color: #334155;
+}
+
+/* Individual House Bed Count Displays */
 .bed-stat-box {
     text-align: center;
     padding: 1rem;
@@ -278,131 +508,10 @@ body {
     gap: 0.5rem;
 }
 
-/* Buttons */
-.btn {
-    padding: 0.6rem 1rem;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    cursor: pointer;
-    border: none;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
+/* ==========================================================================
+   Community Feedback Section
+   ========================================================================== */
 
-.btn-primary {
-    background: var(--primary);
-    color: #fff;
-}
-
-.btn-primary:hover {
-    background: var(--primary-hover);
-}
-
-.btn-secondary {
-    background: #334155;
-    color: #fff;
-}
-
-.btn-success {
-    background: var(--success);
-    color: #fff;
-}
-
-.btn-outline {
-    background: transparent;
-    border: 1px solid var(--card-border);
-    color: var(--text-main);
-}
-
-.full-width {
-    width: 100%;
-}
-
-/* Modals */
-.modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.75);
-    z-index: 1000;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-}
-
-.modal.active {
-    display: flex;
-}
-
-.modal-content {
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
-    border-radius: 12px;
-    width: 100%;
-    max-width: 480px;
-    padding: 1.75rem;
-    position: relative;
-}
-
-.modal-lg {
-    max-width: 900px !important;
-}
-
-.close-btn {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    font-size: 1.5rem;
-    cursor: pointer;
-}
-
-/* Organization Multi-House Cards Layout */
-.org-house-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1.25rem;
-    margin-top: 1.5rem;
-    max-height: 70vh;
-    overflow-y: auto;
-    padding-right: 0.5rem;
-}
-
-.org-house-card {
-    background: #0f172a;
-    border: 1px solid var(--card-border);
-    border-radius: 10px;
-    padding: 1.25rem;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-
-.org-card-header h4 {
-    margin-bottom: 0.25rem;
-    font-size: 1.1rem;
-}
-
-.org-bed-form {
-    margin-top: 1rem;
-}
-
-.org-bed-form .form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-}
-
-/* Feedback Forum */
 .feedback-section {
     background: var(--card-bg);
     border: 1px solid var(--card-border);
@@ -410,11 +519,15 @@ body {
     padding: 1.5rem;
 }
 
+.feedback-section h3 {
+    margin-top: 0;
+    margin-bottom: 1.25rem;
+}
+
 .feedback-layout {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 1.5rem;
-    margin-top: 1rem;
 }
 
 .feedback-card {
@@ -425,180 +538,82 @@ body {
     margin-bottom: 0.75rem;
 }
 
-.modal-footer-note {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    margin-top: 1rem;
-    text-align: center;
-}
-
-.modal-footer-note a {
-    color: var(--accent);
-}
-
 /* ==========================================================================
-   KPI Summary Section
+   Buttons & Action Utilities
    ========================================================================== */
 
-.kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 1rem;
-    margin-bottom: 2rem;
-}
-
-.kpi-card {
-    background-color: var(--card-bg);
-    border: 1px solid var(--card-border);
-    border-radius: 12px;
-    padding: 1.25rem;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-}
-
-.kpi-value {
-    font-size: 2.2rem;
-    font-weight: 700;
-    margin: 0.75rem 0 0.1rem;
-    color: var(--text-primary);
-    line-height: 1;
-}
-
-.kpi-subtext {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-}
-
-/* Badges */
-.badge {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
+.btn {
+    padding: 0.65rem 1.25rem;
+    border-radius: 8px;
     font-weight: 600;
-}
-
-.badge-available {
-    background-color: var(--badge-available-bg);
-    color: var(--badge-available-text);
-}
-
-.badge-occupied {
-    background-color: var(--badge-occupied-bg);
-    color: var(--badge-occupied-text);
-}
-
-.badge-reserved {
-    background-color: var(--badge-reserved-bg);
-    color: var(--badge-reserved-text);
-}
-
-.badge-maintenance {
-    background-color: var(--badge-maint-bg);
-    color: var(--badge-maint-text);
-}
-
-.badge-secondary {
-    background-color: #2a2e2a;
-    color: var(--text-muted);
-}
-
-/* ==========================================================================
-   Pill Tabs Section
-   ========================================================================== */
-
-.tab-pill-bar {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 2rem;
-    overflow-x: auto;
-    padding-bottom: 0.5rem;
-}
-
-.pill-tab {
-    background-color: #222522;
-    color: var(--text-muted);
-    border: none;
-    padding: 0.5rem 1.25rem;
-    border-radius: 20px;
     font-size: 0.9rem;
-    font-weight: 500;
     cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.2s ease;
+    border: none;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
-.pill-tab:hover {
-    background-color: #2c302c;
-    color: var(--text-primary);
+.btn-primary {
+    background: var(--primary);
+    color: #ffffff;
 }
 
-.pill-tab.active {
+.btn-primary:hover {
+    background: var(--primary-hover);
+}
+
+.btn-success {
     background-color: var(--brand-green);
     color: #ffffff;
 }
 
+.btn-success:hover {
+    background-color: var(--brand-green-hover);
+}
+
+.btn-secondary {
+    background: #334155;
+    color: #ffffff;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--card-border);
+    color: var(--text-main);
+}
+
+.btn-outline:hover {
+    background: var(--card-hover);
+}
+
+.full-width {
+    width: 100%;
+}
+
 /* ==========================================================================
-   Filter Card Styling
+   Responsive Adaptations
    ========================================================================== */
 
-.filter-card {
-    background-color: var(--card-bg);
-    border: 1px solid var(--card-border);
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin-bottom: 2.5rem;
-}
+@media (max-width: 768px) {
+    .header-container {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
 
-.filter-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 1rem;
-    align-items: end;
-}
+    .header-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
 
-.filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-}
+    .filter-grid {
+        grid-template-columns: 1fr;
+    }
 
-.filter-group label {
-    font-size: 0.825rem;
-    color: var(--text-muted);
-    font-weight: 500;
-}
-
-.filter-group input,
-.filter-group select,
-.filter-group textarea {
-    background-color: #141614;
-    border: 1px solid var(--card-border);
-    color: var(--text-primary);
-    padding: 0.6rem 0.8rem;
-    border-radius: 6px;
-    font-size: 0.9rem;
-    outline: none;
-}
-
-.filter-group input:focus,
-.filter-group select:focus,
-.filter-group textarea:focus {
-    border-color: var(--brand-green-light);
-}
-
-.filter-toggle-row {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--card-border);
-}
-
-.toggle-container {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-    font-size: 0.9rem;
-    color: var(--text-primary);
+    .feedback-layout {
+        grid-template-columns: 1fr;
+    }
 }
