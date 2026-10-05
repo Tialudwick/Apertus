@@ -77,15 +77,22 @@ body {
     gap: 1rem;
 }
 
+/* Fix the image sizing inside the anchor */
 .brand {
-    background-size: contain;      /* Scales logo to fit without cropping */
-    background-repeat: no-repeat;  
-    background-position: left center; 
-    height: 20px;                  
-    width: 140px;                  
-    display: inline-block;         
+    display: flex;
+    align-items: center;
+    height: 40px; /* Desired height in navbar */
+    text-decoration: none;
+    overflow: hidden; /* Prevents overflow */
 }
 
+.brand-logo {
+    max-height: 100%; /* Constrains image height to the parent link */
+    max-width: 100%;  /* Constrains image width */
+    width: auto;      /* Keeps correct aspect ratio */
+    object-fit: contain;
+    display: block;
+}
 
 
 .nav-actions {
