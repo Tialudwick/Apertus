@@ -587,7 +587,8 @@ body {
 
 .btn-blue {
     background: var(--blue);
-    color: #ffffff;
+    color: #090D16;
+    transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
 .btn-primary:hover {
