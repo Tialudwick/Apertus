@@ -396,6 +396,7 @@ function renderHouseCards(houses) {
         grid.appendChild(card);
     });
 }
+}
 
 
 async function handleFeedbackSubmit(e) {
