@@ -36,6 +36,26 @@
         </div>
     </header>
 
+    <!-- Top Header -->
+    <header role="banner" class="header-banner">
+        <div class="header-container">
+            <div class="header-title-group">
+                <h1>Maine Sober Living Bed Tracker</h1>
+                <p class="subtitle">Statewide bed availability across recovery residences</p>
+            </div>
+            
+            <div class="header-actions">
+                <div class="occupancy-stat">
+                    <span class="stat-percentage" id="totalOccupancyPct">33%</span>
+                    <span class="stat-label">occupancy</span>
+                </div>
+                <button id="addOrgBtn" class="btn btn-success">
+                    + Add organization
+                </button>
+            </div>
+        </div>
+    </header>
+
     <!-- Dynamic Search & Filter Controls -->
         <section class="filter-card" aria-label="Bed Directory Filters">
             <div class="filter-grid">
@@ -98,26 +118,8 @@
             </div>
         </section>
 
-    <!-- Top Header -->
-    <header role="banner" class="header-banner">
-        <div class="header-container">
-            <div class="header-title-group">
-                <h1>Maine Sober Living Bed Tracker</h1>
-                <p class="subtitle">Statewide bed availability across recovery residences</p>
-            </div>
-            
-            <div class="header-actions">
-                <div class="occupancy-stat">
-                    <span class="stat-percentage" id="totalOccupancyPct">33%</span>
-                    <span class="stat-label">occupancy</span>
-                </div>
-                <button id="addOrgBtn" class="btn btn-success">
-                    + Add organization
-                </button>
-            </div>
-        </div>
-    </header>
-
+    
+<!-- card starts here for beds available in state -->
     <main id="main-content" role="main" class="container">
         <!-- Auth Status / System Banner Alert -->
         <div id="authAlertBanner" class="alert-banner" style="display: none;" role="alert"></div>
