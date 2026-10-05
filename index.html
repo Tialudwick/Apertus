@@ -9,47 +9,68 @@
     <!-- Supabase JS Client library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body>
+<body class="dark-theme">
 
-    <header role="banner" class="navbar">
-        <div class="nav-container">
-                <a href="#" class="brand" aria-label="Apertus Home">
-                <img src="assets/apertus_logo.png" alt="Apertus Logo" class="brand-logo">
-                </a>
-            <div class="nav-actions">
-                                
-                <!-- Guest Auth Buttons -->
-                <button id="openSignUpModalBtn" onclick="document.getElementById('signupModal').classList.add('active')" class="btn btn-outline">
-                    📝 Register Organization
-                </button>
-                <button id="openLoginModalBtn" onclick="document.getElementById('loginModal').classList.add('active')" class="btn btn-outline">
-                    🔑 Manager Sign In
-                </button>
-
-                <!-- Authenticated Organization Portal Button -->
-                <button id="managerPortalNav" onclick="openOrgDashboard()" class="btn btn-primary" style="display: none;">
-                    🏢 Organization Dashboard
-                </button>
-
-                <!-- Logout Button -->
-                <button id="logoutBtn" class="btn btn-outline" style="display: none;">
-                    🚪 Log Out
+    <!-- Top Header -->
+    <header role="banner" class="header-banner">
+        <div class="header-container">
+            <div class="header-title-group">
+                <h1>Maine Sober Living Bed Tracker</h1>
+                <p class="subtitle">Statewide bed availability across recovery residences</p>
+            </div>
+            
+            <div class="header-actions">
+                <div class="occupancy-stat">
+                    <span class="stat-percentage" id="totalOccupancyPct">33%</span>
+                    <span class="stat-label">occupancy</span>
+                </div>
+                <button id="addOrgBtn" class="btn btn-success">
+                    + Add organization
                 </button>
             </div>
         </div>
     </header>
 
     <main id="main-content" role="main" class="container">
-        <!-- Auth Status & Email Confirmation Alert Banner -->
+        <!-- Auth Status / System Banner Alert -->
         <div id="authAlertBanner" class="alert-banner" style="display: none;" role="alert"></div>
 
-        <!-- Hero Section -->
-        <section class="hero-section">
-            <h2>Find Open Recovery Beds Across Maine</h2>
-            <p>Real-time, zero-barrier bed availability. Completely free, confidential, and publicly accessible without account registration.</p>
+        <!-- Metric KPI Cards Section -->
+        <section class="kpi-grid" aria-label="Statewide Bed Summary">
+            <div class="kpi-card">
+                <span class="badge badge-available">Available</span>
+                <div class="kpi-value" id="kpiAvailable">5</div>
+                <div class="kpi-subtext" id="kpiAvailableSub">of 12 beds</div>
+            </div>
+
+            <div class="kpi-card">
+                <span class="badge badge-occupied">Occupied</span>
+                <div class="kpi-value" id="kpiOccupied">4</div>
+                <div class="kpi-subtext" id="kpiOccupiedSub">of 12 beds</div>
+            </div>
+
+            <div class="kpi-card">
+                <span class="badge badge-reserved">Reserved</span>
+                <div class="kpi-value" id="kpiReserved">2</div>
+                <div class="kpi-subtext" id="kpiReservedSub">of 12 beds</div>
+            </div>
+
+            <div class="kpi-card">
+                <span class="badge badge-maintenance">Maintenance</span>
+                <div class="kpi-value" id="kpiMaintenance">1</div>
+                <div class="kpi-subtext" id="kpiMaintenanceSub">of 12 beds</div>
+            </div>
         </section>
 
-        <!-- Dynamic Filter Controls (Public View) -->
+        <!-- Organization Quick Filter Tabs -->
+        <div class="tab-pill-bar" role="tablist">
+            <button class="pill-tab active" role="tab" aria-selected="true" id="tabStatewide">Statewide</button>
+            <!-- Dynamic organization pills will be injected here -->
+            <button class="pill-tab" role="tab" aria-selected="false">Harbor Recovery Alliance</button>
+            <button class="pill-tab" role="tab" aria-selected="false">North Star Recovery Homes</button>
+        </div>
+
+        <!-- Dynamic Search & Filter Controls -->
         <section class="filter-card" aria-label="Bed Directory Filters">
             <div class="filter-grid">
                 <div class="filter-group">
@@ -99,7 +120,7 @@
                         <option value="Level IV - Service Provider">Level IV - Service Provider</option>
                     </select>
                 </div>
-                <div>
+                <div class="filter-group filter-submit-container">
                     <button type="submit" class="btn btn-primary">Submit Search</button>
                 </div>
             </div>
@@ -111,15 +132,35 @@
             </div>
         </section>
 
-        <!-- Public Directory Bed Grid -->
+        <!-- Organizations Grid Section -->
         <section class="directory-section">
-            <h3 class="sr-only">Recovery Residence Search Results</h3>
-            <div id="houseGrid" class="house-grid" aria-live="polite">
+            <h2 class="section-heading">Organizations across Maine</h2>
+            
+            <div id="houseGrid" class="organizations-grid" aria-live="polite">
                 <!-- Public house cards render here dynamically -->
+                <!-- Example structure of dynamic cards rendered via JS: -->
+                <div class="org-card">
+                    <div class="org-card-header">
+                        <div>
+                            <h3 class="org-title">Harbor Recovery Alliance</h3>
+                            <p class="org-location">Cumberland County</p>
+                        </div>
+                        <span class="badge badge-secondary">2 houses</span>
+                    </div>
+                    <div class="org-card-stats">
+                        <span>3 of 8 beds available</span>
+                        <span>38% occupied</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill progress-available" style="width: 37.5%;"></div>
+                        <div class="progress-bar-fill progress-reserved" style="width: 25%;"></div>
+                        <div class="progress-bar-fill progress-occupied" style="width: 37.5%;"></div>
+                    </div>
+                </div>
             </div>
         </section>
 
-        <!-- Feedback Forum Section -->
+        <!-- Community Feedback Forum -->
         <section class="feedback-section">
             <h3>Community Feedback Forum</h3>
             <div class="feedback-layout">
@@ -145,89 +186,6 @@
             </div>
         </section>
     </main>
-
-    <!-- MODALS -->
-
-    <!-- Organization Registration Modal -->
-    <div id="signupModal" class="modal" role="dialog" aria-labelledby="signupModalTitle" aria-modal="true">
-        <div class="modal-content">
-            <button class="close-btn" onclick="closeModal('signupModal')" aria-label="Close modal">×</button>
-            <h3 id="signupModalTitle">Register Organization / Company</h3>
-            <p>Create an account to manage bed availability across your recovery residences.</p>
-            <form id="signupForm">
-                <div class="filter-group">
-                    <label for="signupOrgName">Organization / Company Name</label>
-                    <input type="text" id="signupOrgName" placeholder="e.g., Maine Recovery Alliance" required>
-                </div>
-                <div class="filter-group">
-                    <label for="signupEmail">Work Email Address</label>
-                    <input type="email" id="signupEmail" placeholder="manager@example.com" required>
-                </div>
-                <div class="filter-group">
-                    <label for="signupPassword">Password</label>
-                    <input type="password" id="signupPassword" minlength="6" placeholder="••••••••" required>
-                </div>
-                <button type="submit" class="btn btn-primary full-width">Create Account & Send Confirmation Email</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- House Manager Sign In Modal -->
-    <div id="loginModal" class="modal" role="dialog" aria-labelledby="loginModalTitle" aria-modal="true">
-        <div class="modal-content">
-            <button class="close-btn" onclick="closeModal('loginModal')" aria-label="Close modal">×</button>
-            <h3 id="loginModalTitle">Organization Sign In</h3>
-            <p>Log in to access your dashboard and update real-time bed counts.</p>
-            <form id="loginForm">
-                <div class="filter-group">
-                    <label for="loginEmail">Email Address</label>
-                    <input type="email" id="loginEmail" placeholder="manager@example.com" required>
-                </div>
-                <div class="filter-group">
-                    <label for="loginPassword">Password</label>
-                    <input type="password" id="loginPassword" placeholder="••••••••" required>
-                </div>
-                <button type="submit" class="btn btn-primary full-width">Sign In</button>
-            </form>
-            <p class="modal-footer-note">Need to verify your email? Check your inbox or <a href="#" id="resendConfirmBtn">resend confirmation email</a>.</p>
-        </div>
-    </div>
-
-    <!-- Organization Multi-House Portal Modal -->
-    <div id="orgDashboardModal" class="modal modal-lg" role="dialog" aria-labelledby="orgDashboardTitle" aria-modal="true">
-        <div class="modal-content">
-            <button class="close-btn" onclick="closeModal('orgDashboardModal')" aria-label="Close modal">×</button>
-            <div class="dashboard-header">
-                <h3 id="orgDashboardTitle">🏢 Organization Management Dashboard</h3>
-                <p id="orgDashboardSub">Manage real-time bed capacity and availability for all residences in your organization.</p>
-            </div>
-            
-            <div id="orgHouseGrid" class="org-house-grid" aria-live="polite">
-                <!-- Individual house management cards render here -->
-            </div>
-        </div>
-    </div>
-
-    <!-- 24-Hour Hold Request Modal -->
-    <div id="holdModal" class="modal" role="dialog" aria-labelledby="holdHouseTitle" aria-modal="true">
-        <div class="modal-content">
-            <button class="close-btn" onclick="closeModal('holdModal')" aria-label="Close modal">×</button>
-            <h3 id="holdHouseTitle">Place 24-Hour Standby Hold</h3>
-            <p>Holds reserve a bed on standby for 24 hours while transportation or intake is arranged.</p>
-            <form id="holdModalForm">
-                <input type="hidden" id="holdHouseId">
-                <div class="filter-group">
-                    <label for="holdAlias">Client Initials or Alias (No PHI Required)</label>
-                    <input type="text" id="holdAlias" placeholder="e.g., J.D." required>
-                </div>
-                <div class="filter-group">
-                    <label for="holdPhone">Contact Phone Number (Optional)</label>
-                    <input type="tel" id="holdPhone" placeholder="(207) 555-0199">
-                </div>
-                <button type="submit" class="btn btn-primary full-width">Confirm 24-Hour Hold</button>
-            </form>
-        </div>
-    </div>
 
     <script type="module" src="js/app.js"></script>
 </body>
