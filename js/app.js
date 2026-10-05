@@ -33,7 +33,6 @@ function setupEventListeners() {
     const logoutBtn = document.getElementById('logoutBtn');
     const loginCard = document.getElementById('loginCard');
 
-    // Modal / Card Toggles
     if (openLoginBtn && loginCard) {
         openLoginBtn.addEventListener('click', () => {
             loginCard.style.display = loginCard.style.display === 'none' || !loginCard.style.display ? 'block' : 'none';
@@ -46,7 +45,6 @@ function setupEventListeners() {
         });
     }
 
-    // 1. Manager Login Handler
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -75,7 +73,6 @@ function setupEventListeners() {
         });
     }
 
-    // 2. Manager Bed Update Form Submission
     if (updateBedForm) {
         updateBedForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -114,7 +111,6 @@ function setupEventListeners() {
         });
     }
 
-    // 3. Logout Handler
     if (logoutBtn) {
         logoutBtn.addEventListener('click', async () => {
             try {
@@ -125,7 +121,6 @@ function setupEventListeners() {
         });
     }
 
-    // Public Directory Filters
     document.getElementById('searchInput')?.addEventListener('input', debounce(fetchAndRenderHouses, 300));
     document.getElementById('regionFilter')?.addEventListener('change', fetchAndRenderHouses);
     document.getElementById('countyFilter')?.addEventListener('change', fetchAndRenderHouses);
@@ -133,7 +128,6 @@ function setupEventListeners() {
     document.getElementById('supportFilter')?.addEventListener('change', fetchAndRenderHouses);
     document.getElementById('availableOnlyToggle')?.addEventListener('change', fetchAndRenderHouses);
 
-    // Feedback
     document.getElementById('feedbackForm')?.addEventListener('submit', handleFeedbackSubmit);
 }
 
@@ -147,7 +141,6 @@ function initAuthListener() {
         const directorPanel = document.getElementById('directorPanel');
 
         if (session) {
-            // Check Manager Assignment
             try {
                 currentManagerHouse = await fetchAssignedHouse(session.user.id);
 
@@ -156,7 +149,6 @@ function initAuthListener() {
                     document.getElementById('managerHouseLabel').textContent = 
                         `Editing residence: ${currentManagerHouse.house_name} (${currentManagerHouse.county} Co.)`;
 
-                    // Pre-fill existing counts in the form
                     document.getElementById('inputAvailable').value = currentManagerHouse.available_beds || 0;
                     document.getElementById('inputOccupied').value = currentManagerHouse.occupied_beds || 0;
                     document.getElementById('inputReserved').value = currentManagerHouse.reserved_beds || 0;
@@ -181,7 +173,6 @@ function initAuthListener() {
                 console.error('Error fetching manager house:', err);
             }
 
-            // Check Director Access
             try {
                 const directorHouses = await fetchHousesForDirector(session.user.id);
                 if (directorHouses && directorHouses.length > 0 && directorPanel) {
@@ -195,7 +186,6 @@ function initAuthListener() {
             }
 
         } else {
-            // Logged Out State
             currentManagerHouse = null;
             if (managerUpdateSection) managerUpdateSection.style.display = 'none';
             if (directorPanel) directorPanel.style.display = 'none';
@@ -244,7 +234,6 @@ function renderDirectorTable(houses) {
         tableBody.appendChild(row);
     });
 
-    // Attach Event Listeners to "Save Manager" buttons
     document.querySelectorAll('.save-manager-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             const houseId = e.target.dataset.houseId;
@@ -300,7 +289,8 @@ async function fetchAndRenderHouses() {
         const term = search.toLowerCase();
         filtered = filtered.filter(h => 
             (h.house_name && h.house_name.toLowerCase().includes(term)) || 
-            (h.city && h.city.toLowerCase().includes(term))
+            (h.city && h.city.toLowerCase().includes(term)) ||
+            (h.parent_company && h.parent_company.toLowerCase().includes(term))
         );
     }
 
@@ -321,70 +311,165 @@ function renderHouseCards(houses) {
     houses.forEach(house => {
         const card = document.createElement('article');
         card.className = 'house-card';
-        card.style.cssText = 'background: #1e293b; border: 1px solid var(--card-border, #334155); border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;';
+        card.style.cssText = 'background: #1e293b; border: 1px solid var(--card-border, #334155); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.25rem; color: #e2e8f0;';
         
         const parentOrg = house.parent_company || house.company_name || 'Independent Residence';
-        const rentDisplay = house.rent_amount ? `$${Number(house.rent_amount).toLocaleString()}/wk` : 'Contact for Rent';
+        const rentDisplay = house.rent_amount ? `$${Number(house.rent_amount).toLocaleString()}/mo` : 'Contact for Rent';
         const moveInDisplay = house.move_in_cost ? `$${Number(house.move_in_cost).toLocaleString()}` : 'Contact for Details';
-        const insuranceDisplay = house.insurance_accepted || 'Self-Pay';
+        const insuranceDisplay = house.insurance_accepted || 'Self-Pay / Cash';
+
+        // Format Amenities tag array
+        let amenitiesList = [];
+        if (Array.isArray(house.amenities)) {
+            amenitiesList = house.amenities;
+        } else if (typeof house.amenities === 'string') {
+            amenitiesList = house.amenities.split(',').map(a => a.trim());
+        }
+
+        const amenitiesHTML = amenitiesList.length > 0 
+            ? amenitiesList.map(item => `<span style="background: #0f172a; border: 1px solid #334155; color: #cbd5e1; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; display: inline-block; margin: 0.15rem;">✓ ${escapeHtml(item)}</span>`).join(' ')
+            : '<span style="color: #64748b; font-size: 0.85rem;">None listed</span>';
+
+        // Social Media Links
+        const socials = [];
+        if (house.social_facebook) socials.push(`<a href="${escapeHtml(house.social_facebook)}" target="_blank" style="color: #38bdf8;">Facebook</a>`);
+        if (house.social_linkedin) socials.push(`<a href="${escapeHtml(house.social_linkedin)}" target="_blank" style="color: #38bdf8;">LinkedIn</a>`);
+        if (house.social_x) socials.push(`<a href="${escapeHtml(house.social_x)}" target="_blank" style="color: #38bdf8;">X</a>`);
+        if (house.social_instagram) socials.push(`<a href="${escapeHtml(house.social_instagram)}" target="_blank" style="color: #38bdf8;">Instagram</a>`);
 
         card.innerHTML = `
-            <!-- Top Section: Org & House Name -->
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.75rem;">
+            <!-- Top Header -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
                 <div>
-                    <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #38bdf8; font-weight: 600; margin-bottom: 0.2rem;">
-                        ${escapeHtml(parentOrg)}
+                    <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #38bdf8; font-weight: 700; margin-bottom: 0.2rem;">
+                        🏢 Organization: ${escapeHtml(parentOrg)}
                     </div>
-                    <h3 style="margin: 0; color: #fff; font-size: 1.15rem; font-weight: 700;">
+                    <h3 style="margin: 0; color: #fff; font-size: 1.35rem; font-weight: 800;">
                         ${escapeHtml(house.house_name)}
                     </h3>
-                    <p style="margin: 0.3rem 0 0 0; color: #94a3b8; font-size: 0.85rem;">
+                    <p style="margin: 0.3rem 0 0 0; color: #94a3b8; font-size: 0.9rem;">
                         📍 ${escapeHtml(house.city || 'N/A')}, ${escapeHtml(house.county || '')} County
                     </p>
                 </div>
 
-                <!-- Badges & Bed Counter -->
-                <div style="display: flex; align-items: center; gap: 0.6rem;">
-                    <span style="background: #0284c7; color: #fff; padding: 0.25rem 0.65rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">
-                        ${escapeHtml(house.gender || 'N/A')}
+                <!-- Bed Counter Box -->
+                <div style="background: #0f172a; padding: 0.5rem 1rem; border-radius: 8px; text-align: center; border: 1px solid #334155; min-width: 100px;">
+                    <span style="font-size: 1.4rem; font-weight: bold; color: ${house.available_beds > 0 ? '#22c55e' : '#94a3b8'};">
+                        ${house.available_beds || 0}
                     </span>
-
-                    <span title="MARR Level of Support" style="background: #334155; color: #38bdf8; padding: 0.2rem; border-radius: 50%; font-size: 0.75rem; font-weight: bold; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #475569;">
-                        L${house.level_of_support || 1}
-                    </span>
-
-                    <span title="MARR Certified" style="background: #334155; color: #38bdf8; padding: 0.2rem; border-radius: 50%; font-size: 0.75rem; font-weight: bold; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #475569;">
-                        MARR Certified: ${house.marr_certified || "N/A"}
-                    </span>
-
-                    <div style="background: #0f172a; padding: 0.4rem 0.85rem; border-radius: 6px; text-align: center; border: 1px solid #1e293b;">
-                        <span style="font-size: 1.25rem; font-weight: bold; color: ${house.available_beds > 0 ? '#22c55e' : '#94a3b8'};">
-                            ${house.available_beds || 0}
-                        </span>
-                        <span style="font-size: 0.7rem; color: #94a3b8; display: block; text-transform: uppercase;">Open Beds</span>
-                    </div>
+                    <span style="font-size: 0.7rem; color: #94a3b8; display: block; text-transform: uppercase; font-weight: 600;">Open Beds</span>
                 </div>
             </div>
 
-            <hr style="border: 0; border-top: 1px solid #334155; margin: 1rem 0;" />
+            <!-- Certification & Type Badges -->
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; align-items: center;">
+                <span style="background: #0284c7; color: #fff; padding: 0.25rem 0.65rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600;">
+                    Serving: ${escapeHtml(house.population || house.gender || 'N/A')}
+                </span>
 
-            <!-- Bottom Section: Pricing & Insurance Info -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
-                <div style="background: #0f172a; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid #1e293b;">
-                    <div style="color: #94a3b8; font-size: 0.75rem;">Rent</div>
-                    <div style="color: #f8fafc; font-weight: 600; margin-top: 0.1rem;">💵 ${rentDisplay}</div>
+                <span style="background: #334155; color: #38bdf8; padding: 0.25rem 0.65rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600;">
+                    NARR Level ${house.level_of_support || 2} ${house.narr_type ? `(${escapeHtml(house.narr_type)})` : ''}
+                </span>
+
+                <span style="background: ${house.allows_moud !== false ? '#166534' : '#7f1d1d'}; color: #fff; padding: 0.25rem 0.65rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600;">
+                    ${house.allows_moud !== false ? '✓ Allows MOUD' : '✕ No MOUD'}
+                </span>
+            </div>
+
+            <!-- Description -->
+            ${house.description ? `
+                <p style="margin: 1rem 0; color: #cbd5e1; font-size: 0.9rem; line-height: 1.5; background: #0f172a; padding: 0.75rem 1rem; border-radius: 6px; border-left: 3px solid #38bdf8;">
+                    ${escapeHtml(house.description)}
+                </p>
+            ` : ''}
+
+            <!-- Financials Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; margin-top: 1rem; font-size: 0.85rem;">
+                <div style="background: #0f172a; padding: 0.6rem 0.8rem; border-radius: 6px; border: 1px solid #1e293b;">
+                    <div style="color: #94a3b8; font-size: 0.75rem;">Move-In Fee</div>
+                    <div style="color: #f8fafc; font-weight: 700; margin-top: 0.1rem; font-size: 0.95rem;">🔑 ${moveInDisplay}</div>
                 </div>
 
-                <div style="background: #0f172a; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid #1e293b;">
-                    <div style="color: #94a3b8; font-size: 0.75rem;">Move-in Cost</div>
-                    <div style="color: #f8fafc; font-weight: 600; margin-top: 0.1rem;">🔑 ${moveInDisplay}</div>
+                <div style="background: #0f172a; padding: 0.6rem 0.8rem; border-radius: 6px; border: 1px solid #1e293b;">
+                    <div style="color: #94a3b8; font-size: 0.75rem;">Monthly Rent</div>
+                    <div style="color: #f8fafc; font-weight: 700; margin-top: 0.1rem; font-size: 0.95rem;">💵 ${rentDisplay}</div>
                 </div>
 
-                <div style="background: #0f172a; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid #1e293b; grid-column: span 1 / -1;">
-                    <div style="color: #94a3b8; font-size: 0.75rem;">Insurance / Funding</div>
+                <div style="background: #0f172a; padding: 0.6rem 0.8rem; border-radius: 6px; border: 1px solid #1e293b; grid-column: span 1 / -1;">
+                    <div style="color: #94a3b8; font-size: 0.75rem;">Insurance / Payment Accepted</div>
                     <div style="color: #38bdf8; font-weight: 600; margin-top: 0.1rem;">💳 ${escapeHtml(insuranceDisplay)}</div>
                 </div>
             </div>
+
+            <!-- Contact & Quick Links Bar -->
+            <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #334155; font-size: 0.85rem; align-items: center; justify-content: space-between;">
+                <div style="color: #cbd5e1; display: flex; flex-wrap: wrap; gap: 1rem;">
+                    ${house.contact_name ? `<span>👤 <strong>Contact:</strong> ${escapeHtml(house.contact_name)}</span>` : ''}
+                    ${house.phone ? `<span>📞 <a href="tel:${escapeHtml(house.phone)}" style="color: #38bdf8; text-decoration: none;">${escapeHtml(house.phone)}</a></span>` : ''}
+                    ${house.email ? `<span>✉️ <a href="mailto:${escapeHtml(house.email)}" style="color: #38bdf8; text-decoration: none;">${escapeHtml(house.email)}</a></span>` : ''}
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    ${house.website ? `<a href="${escapeHtml(house.website)}" target="_blank" style="background: #334155; color: #fff; padding: 0.4rem 0.8rem; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 0.8rem;">🌐 Website</a>` : ''}
+                    ${house.application_link ? `<a href="${escapeHtml(house.application_link)}" target="_blank" style="background: #0284c7; color: #fff; padding: 0.4rem 0.8rem; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 0.8rem;">📝 Apply Now</a>` : ''}
+                </div>
+            </div>
+
+            <!-- Collapsible Section for Detailed Services & Amenities -->
+            <details style="margin-top: 1rem; background: #0f172a; padding: 0.75rem; border-radius: 6px; border: 1px solid #1e293b;">
+                <summary style="cursor: pointer; font-weight: 600; color: #38bdf8; font-size: 0.85rem;">
+                    View Amenities, Policies & Extra Details ▼
+                </summary>
+                
+                <div style="margin-top: 0.75rem; font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.75rem;">
+                    ${house.defining_characteristics ? `
+                        <div>
+                            <strong style="color: #94a3b8; display: block; margin-bottom: 0.2rem;">Defining Characteristics:</strong>
+                            <div>${escapeHtml(house.defining_characteristics)}</div>
+                        </div>
+                    ` : ''}
+
+                    <div>
+                        <strong style="color: #94a3b8; display: block; margin-bottom: 0.4rem;">Amenities:</strong>
+                        <div>${amenitiesHTML}</div>
+                    </div>
+
+                    ${house.languages ? `
+                        <div>
+                            <strong style="color: #94a3b8; display: block; margin-bottom: 0.2rem;">Languages Offered:</strong>
+                            <div>${escapeHtml(house.languages)}</div>
+                        </div>
+                    ` : ''}
+
+                    ${house.policies ? `
+                        <div>
+                            <strong style="color: #94a3b8; display: block; margin-bottom: 0.2rem;">House Policies:</strong>
+                            <div>${escapeHtml(house.policies)}</div>
+                        </div>
+                    ` : ''}
+
+                    ${house.services_available ? `
+                        <div>
+                            <strong style="color: #94a3b8; display: block; margin-bottom: 0.2rem;">Services Available:</strong>
+                            <div>${escapeHtml(house.services_available)}</div>
+                        </div>
+                    ` : ''}
+
+                    ${house.programs ? `
+                        <div>
+                            <strong style="color: #94a3b8; display: block; margin-bottom: 0.2rem;">Programs:</strong>
+                            <div>${escapeHtml(house.programs)}</div>
+                        </div>
+                    ` : ''}
+
+                    ${socials.length > 0 ? `
+                        <div>
+                            <strong style="color: #94a3b8; display: block; margin-bottom: 0.2rem;">Social Media:</strong>
+                            <div>${socials.join(' • ')}</div>
+                        </div>
+                    ` : ''}
+                </div>
+            </details>
         `;
         grid.appendChild(card);
     });
