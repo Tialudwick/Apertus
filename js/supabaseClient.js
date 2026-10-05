@@ -1,7 +1,19 @@
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Safe environment variable retrieval with fallback support
+const SUPABASE_URL = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_SUPABASE_URL)
+    ? import.meta.env.VITE_SUPABASE_URL
+    : 'https://YOUR_PROJECT_ID.supabase.co'; // Replace with your project URL if not using .env
 
-export const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_ANON_KEY = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_SUPABASE_ANON_KEY)
+    ? import.meta.env.VITE_SUPABASE_ANON_KEY
+    : 'YOUR_ACTUAL_ANON_KEY'; // Replace with your anon key if not using .env
+
+export const supabase = (typeof window !== 'undefined' && window.supabase)
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
+if (!supabase) {
+    console.error('Supabase CDN library is not loaded. Ensure <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> is in index.html.');
+}
 
 /**
  * Utility: Checks if a date falls within the 7-day rolling window
