@@ -333,7 +333,7 @@ function renderHouseCards(houses) {
             <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.75rem;">
                 <div>
                     <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #38bdf8; font-weight: 600; margin-bottom: 0.2rem;">
-                        🏢 ${escapeHtml(parentOrg)}
+                        ${escapeHtml(parentOrg)}
                     </div>
                     <h3 style="margin: 0; color: #fff; font-size: 1.15rem; font-weight: 700;">
                         ${escapeHtml(house.house_name)}
