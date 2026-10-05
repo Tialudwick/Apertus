@@ -125,6 +125,14 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
+/* navigation section */
+.nav-banner{
+    background-color: #0b1120;
+    border-bottom: 1px solid var(--card-border);
+    padding: 1rem 0;
+    margin-bottom: 2rem;
+
+}
 
 .brand {
     display: flex;
