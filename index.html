@@ -11,18 +11,18 @@
 </head>
 <body class="dark-theme">
     <!-- Navigation -->
-     <header role="nav-banner" class="navbar">
+    <header role="nav-banner" class="navbar">
         <div class="nav-container">
-                <a href="#" class="brand" aria-label="Apertus Home">
+            <a href="#" class="brand" aria-label="Apertus Home">
                 <img src="assets/apertus_logo.png" alt="Apertus Logo" class="brand-logo">
-                </a>
+            </a>
             <div class="nav-actions">
                 <!-- Guest Auth Buttons -->
-                <button class="btn btn-blue" id="openLoginModalBtn" onclick="document.getElementById('loginModal').classList.add('active')">
+                <button class="btn btn-blue" id="openLoginModalBtn">
                     Manager Sign In
                 </button>
                 <!-- Authenticated Organization Portal Button -->
-                <button id="managerPortalNav" onclick="openOrgDashboard()" class="btn btn-blue" style="display: none;">
+                <button id="managerPortalNav" class="btn btn-blue" style="display: none;">
                     Organization Dashboard
                 </button>
                 <!-- Logout Button -->
@@ -53,30 +53,37 @@
         </div>
     </header>
 
-    <!-- Auth Bar / Status Area -->
-<div id="authStatusBanner" class="filter-card" style="margin-bottom: 1.5rem;">
-    <!-- Rendered dynamically by JS -->
-</div>
-
-<!-- Login Form Modal or Card -->
-<div id="loginCard" class="filter-card" style="display: none;">
-    <h3>House Manager Login</h3>
-    <form id="loginForm" style="margin-top: 1rem;">
-        <div class="filter-group">
-            <label for="loginEmail">Email Address</label>
-            <input type="email" id="loginEmail" placeholder="manager@example.com" required>
+    <main id="main-content" role="main" class="container" style="margin-top: 1.5rem;">
+        <!-- Auth Bar / Status Area -->
+        <div id="authStatusBanner" class="filter-card" style="margin-bottom: 1.5rem;">
+            <!-- Rendered dynamically by JS -->
         </div>
-        <div class="filter-group" style="margin-top: 0.75rem;">
-            <label for="loginPassword">Password</label>
-            <input type="password" id="loginPassword" placeholder="••••••••" required>
-        </div>
-        <button type="submit" id="loginBtn" class="btn btn-primary full-width" style="margin-top: 1rem;">
-            Log In
-        </button>
-    </form>
-</div>
 
-    <!-- Dynamic Search & Filter Controls -->
+        <!-- Login Form Modal or Card -->
+        <div id="loginCard" class="filter-card" style="display: none; margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>House Manager Login</h3>
+                <button id="closeLoginBtn" class="btn btn-outline" style="padding: 0.2rem 0.5rem;">✕</button>
+            </div>
+            <form id="loginForm" style="margin-top: 1rem;">
+                <div class="filter-group">
+                    <label for="loginEmail">Email Address</label>
+                    <input type="email" id="loginEmail" placeholder="manager@example.com" required>
+                </div>
+                <div class="filter-group" style="margin-top: 0.75rem;">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••" required>
+                </div>
+                <button type="submit" id="loginBtn" class="btn btn-primary full-width" style="margin-top: 1rem;">
+                    Log In
+                </button>
+            </form>
+        </div>
+
+        <!-- Auth Status Banner Alert -->
+        <div id="authAlertBanner" class="alert-banner" style="display: none;" role="alert"></div>
+
+        <!-- Dynamic Search & Filter Controls -->
         <section class="filter-card" aria-label="Bed Directory Filters">
             <div class="filter-grid">
                 <div class="filter-group">
@@ -138,12 +145,6 @@
             </div>
         </section>
 
-    
-<!-- card starts here for beds available in state -->
-    <main id="main-content" role="main" class="container">
-        <!-- Auth Status / System Banner Alert -->
-        <div id="authAlertBanner" class="alert-banner" style="display: none;" role="alert"></div>
-
         <!-- Metric KPI Cards Section -->
         <section class="kpi-grid" aria-label="Statewide Bed Summary">
             <div class="kpi-card">
@@ -171,42 +172,10 @@
             </div>
         </section>
 
-        <!-- Organization Quick Filter Tabs -->
-        <div class="tab-pill-bar" role="tablist">
-            <button class="pill-tab active" role="tab" aria-selected="true" id="tabStatewide">Statewide</button>
-            <!-- Dynamic organization pills will be injected here -->
-            <button class="pill-tab" role="tab" aria-selected="false">Harbor Recovery Alliance</button>
-            <button class="pill-tab" role="tab" aria-selected="false">North Star Recovery Homes</button>
-        </div>
-
-        
-
         <!-- Organizations Grid Section -->
         <section class="directory-section">
             <h2 class="section-heading">Organizations across Maine</h2>
-            
-            <div id="houseGrid" class="organizations-grid" aria-live="polite">
-                <!-- Public house cards render here dynamically -->
-                <!-- Example structure of dynamic cards rendered via JS: -->
-                <div class="org-card">
-                    <div class="org-card-header">
-                        <div>
-                            <h3 class="org-title">Harbor Recovery Alliance</h3>
-                            <p class="org-location">Cumberland County</p>
-                        </div>
-                        <span class="badge badge-secondary">2 houses</span>
-                    </div>
-                    <div class="org-card-stats">
-                        <span>3 of 8 beds available</span>
-                        <span>38% occupied</span>
-                    </div>
-                    <div class="progress-bar-container">
-                        <div class="progress-bar-fill progress-available" style="width: 37.5%;"></div>
-                        <div class="progress-bar-fill progress-reserved" style="width: 25%;"></div>
-                        <div class="progress-bar-fill progress-occupied" style="width: 37.5%;"></div>
-                    </div>
-                </div>
-            </div>
+            <div id="houseGrid" class="organizations-grid" aria-live="polite"></div>
         </section>
 
         <!-- Community Feedback Forum -->
@@ -229,9 +198,7 @@
                     </div>
                     <button type="submit" class="btn btn-blue">Submit Feedback</button>
                 </form>
-                <div id="feedbackList" class="feedback-list">
-                    <!-- Community feedback items render here -->
-                </div>
+                <div id="feedbackList" class="feedback-list"></div>
             </div>
         </section>
     </main>

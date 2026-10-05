@@ -1,16 +1,10 @@
-// js/supabaseClient.js
-// Replace placeholders with your Supabase Project Settings -> API credentials
-
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Initialize Supabase Client
 export const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /**
  * Utility: Checks if a date falls within the 7-day rolling window
- * @param {string|Date} dateString 
- * @returns {boolean}
  */
 export function isWithin7Days(dateString) {
     if (!dateString) return false;
@@ -21,9 +15,7 @@ export function isWithin7Days(dateString) {
 }
 
 /**
- * Submits updated bed metrics to the Supabase cloud database
- * @param {string} houseId - UUID of the house record
- * @param {Object} bedMetrics - { available, occupied, reserved, maintenance }
+ * Submits updated bed metrics to Supabase
  */
 export async function submitBedUpdate(houseId, bedMetrics) {
     const { available, occupied, reserved, maintenance } = bedMetrics;
@@ -44,7 +36,6 @@ export async function submitBedUpdate(houseId, bedMetrics) {
         console.error('Error updating bed counts in Supabase:', error.message);
         throw error;
     }
-
     return data;
 }
 
@@ -61,35 +52,22 @@ export async function fetchHouses() {
         console.error('Error fetching houses from Supabase:', error.message);
         throw error;
     }
-
     return data;
 }
 
 // --- Authentication Utilities ---
 
-/**
- * Log in a manager with Email & Password
- */
 export async function loginManager(email, password) {
-    const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-    });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
     return data;
 }
 
-/**
- * Log out the active manager
- */
 export async function logoutManager() {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
 }
 
-/**
- * Fetch the specific house assigned to a logged-in manager ID
- */
 export async function fetchAssignedHouse(userId) {
     const { data, error } = await supabase
         .from('houses')
@@ -104,11 +82,6 @@ export async function fetchAssignedHouse(userId) {
     return data;
 }
 
-// js/supabaseClient.js (Append to existing exports)
-
-/**
- * Fetch all houses managed by a Director
- */
 export async function fetchHousesForDirector(directorId) {
     const { data, error } = await supabase
         .from('houses')
@@ -120,9 +93,6 @@ export async function fetchHousesForDirector(directorId) {
     return data;
 }
 
-/**
- * Assign or update a manager's User ID for a specific house
- */
 export async function assignHouseManager(houseId, newManagerUserId) {
     const { data, error } = await supabase
         .from('houses')

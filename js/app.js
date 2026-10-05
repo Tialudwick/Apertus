@@ -1,7 +1,13 @@
-// js/app.js
-import { supabase, isWithin7Days } from './supabaseClient.js';
+import { 
+    supabase, 
+    loginManager, 
+    logoutManager, 
+    fetchAssignedHouse, 
+    submitBedUpdate, 
+    fetchHouses, 
+    isWithin7Days 
+} from './supabaseClient.js';
 
-let currentUserProfile = null;
 let currentSession = null;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -10,323 +16,73 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function initApp() {
     setupEventListeners();
-    await initAuth();
+    initAuthListener();
     await fetchAndRenderHouses();
     await loadFeedback();
     subscribeToRealtimeUpdates();
 }
 
-
-/**
- * Enables Supabase Realtime WebSocket subscriptions so all public clients update live
- */
-function subscribeToRealtimeUpdates() {
-    supabase
-        .channel('public-bed-updates')
-        .on(
-            'postgres_changes',
-            { event: '*', schema: 'public', table: 'beds' },
-            () => {
-                fetchAndRenderHouses();
-                if (document.getElementById('orgDashboardModal')?.classList.contains('active')) {
-                    renderOrgDashboard();
-                }
-            }
-        )
-        .on(
-            'postgres_changes',
-            { event: '*', schema: 'public', table: 'hold_requests' },
-            () => fetchAndRenderHouses()
-        )
-        .subscribe();
-}
-
-/**
- * Initializes Supabase Auth listeners.
- * Relying solely on onAuthStateChange handles initial session load (INITIAL_SESSION) 
- * as well as SIGNED_IN, SIGNED_OUT, and TOKEN_REFRESHED events without duplicate runs.
- */
-async function initAuth() {
-    supabase.auth.onAuthStateChange(async (_event, session) => {
-        await handleSessionChange(session);
-    });
-}
-
-/**
- * Handles profile loading, email confirmation verification, and navbar state
- */
-async function handleSessionChange(session) {
-    currentSession = session;
-    const alertBanner = document.getElementById('authAlertBanner');
-
-    if (session) {
-        const isEmailConfirmed = !!session.user.email_confirmed_at;
-
-        if (!isEmailConfirmed && alertBanner) {
-            alertBanner.className = 'alert-banner alert-warning';
-            alertBanner.innerHTML = `
-                ⚠️ <strong>Email Unconfirmed:</strong> Please check <code>${escapeHtml(session.user.email)}</code> and click the verification link.
-                <button class="btn-text-link" id="bannerResendBtn">Resend Link</button>
-            `;
-            alertBanner.style.display = 'block';
-            document.getElementById('bannerResendBtn')?.addEventListener('click', resendVerificationEmail);
-        } else if (alertBanner) {
-            alertBanner.style.display = 'none';
-        }
-
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .maybeSingle();
-
-        if (profile) {
-            currentUserProfile = profile;
-        } else {
-            currentUserProfile = {
-                id: session.user.id,
-                email: session.user.email,
-                company_id: session.user.user_metadata?.company_id || null,
-                house_id: session.user.user_metadata?.house_id || null
-            };
-        }
-
-        updateUIForAuth(true);
-        return;
-    }
-
-    currentUserProfile = null;
-    if (alertBanner) alertBanner.style.display = 'none';
-    updateUIForAuth(false);
-}
-
-import { 
-    supabase, 
-    loginManager, 
-    logoutManager, 
-    fetchAssignedHouse, 
-    submitBedUpdate, 
-    fetchHouses 
-} from './supabaseClient.js';
-
-document.addEventListener('DOMContentLoaded', () => {
+function setupEventListeners() {
     const loginForm = document.getElementById('loginForm');
-    const updateForm = document.getElementById('updateBedForm');
-    const houseSelect = document.getElementById('houseSelect');
-    const authStatusBanner = document.getElementById('authStatusBanner');
+    const openLoginBtn = document.getElementById('openLoginModalBtn');
+    const closeLoginBtn = document.getElementById('closeLoginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
     const loginCard = document.getElementById('loginCard');
 
-    let currentManagerHouse = null;
-
-    // 1. Listen for Supabase Authentication State Changes
-    supabase.auth.onAuthStateChange(async (event, session) => {
-        if (session) {
-            // Manager logged in
-            try {
-                currentManagerHouse = await fetchAssignedHouse(session.user.id);
-                renderAuthBanner(session.user.email, currentManagerHouse);
-                loginCard.style.display = 'none';
-
-                if (currentManagerHouse) {
-                    // Auto-select manager's assigned house and lock dropdown
-                    houseSelect.value = currentManagerHouse.id;
-                    houseSelect.disabled = true;
-                    
-                    // Pre-fill current counts in update form
-                    document.getElementById('inputAvailable').value = currentManagerHouse.available_beds;
-                    document.getElementById('inputOccupied').value = currentManagerHouse.occupied_beds;
-                    document.getElementById('inputReserved').value = currentManagerHouse.reserved_beds;
-                    document.getElementById('inputMaintenance').value = currentManagerHouse.maintenance_beds;
-                }
-            } catch (err) {
-                console.error('Failed to resolve manager house:', err);
-            }
-        } else {
-            // Unauthenticated / Public visitor mode
-            currentManagerHouse = null;
-            renderLoggedOutBanner();
-            if (houseSelect) houseSelect.disabled = false;
-        }
-    });
-
-    // 2. Render Auth Banner UI
-    function renderAuthBanner(email, assignedHouse) {
-        authStatusBanner.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
-                <div>
-                    <strong>Logged in as:</strong> ${email}
-                    <div style="font-size: 0.85rem; color: var(--text-muted);">
-                        Assigned House: <strong>${assignedHouse ? assignedHouse.house_name : 'No house assigned'}</strong>
-                    </div>
-                </div>
-                <button id="logoutBtn" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
-                    Log Out
-                </button>
-            </div>
-        `;
-        document.getElementById('logoutBtn').addEventListener('click', () => logoutManager());
-    }
-
-    function renderLoggedOutBanner() {
-        authStatusBanner.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
-                <span>Public View (Read Only)</span>
-                <button id="showLoginBtn" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
-                    Manager Login
-                </button>
-            </div>
-        `;
-        document.getElementById('showLoginBtn').addEventListener('click', () => {
-            loginCard.style.display = loginCard.style.display === 'none' ? 'block' : 'none';
+    // Toggle Login Card
+    if (openLoginBtn && loginCard) {
+        openLoginBtn.addEventListener('click', () => {
+            loginCard.style.display = loginCard.style.display === 'none' || !loginCard.style.display ? 'block' : 'none';
         });
     }
 
-    // 3. Handle Login Submit
+    if (closeLoginBtn && loginCard) {
+        closeLoginBtn.addEventListener('click', () => {
+            loginCard.style.display = 'none';
+        });
+    }
+
+    // Login Form Submission
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
+            const email = document.getElementById('loginEmail')?.value.trim();
+            const password = document.getElementById('loginPassword')?.value;
+            const submitBtn = document.getElementById('loginBtn');
+
+            if (!email || !password) return alert('Please enter both email and password.');
 
             try {
+                if (submitBtn) {
+                    submitBtn.textContent = 'Logging in...';
+                    submitBtn.disabled = true;
+                }
                 await loginManager(email, password);
                 loginForm.reset();
+                if (loginCard) loginCard.style.display = 'none';
             } catch (err) {
                 alert(`Login failed: ${err.message}`);
-            }
-        });
-    }
-
-    // 4. Handle Bed Update Submit
-    if (updateForm) {
-        updateForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const targetHouseId = houseSelect.value;
-            if (!targetHouseId) {
-                alert('Please select a house to update.');
-                return;
-            }
-
-            const bedMetrics = {
-                available: document.getElementById('inputAvailable').value,
-                occupied: document.getElementById('inputOccupied').value,
-                reserved: document.getElementById('inputReserved').value,
-                maintenance: document.getElementById('inputMaintenance').value
-            };
-
-            try {
-                await submitBedUpdate(targetHouseId, bedMetrics);
-                alert('Beds updated live in Supabase cloud!');
-            } catch (err) {
-                alert('Permission denied: You can only update your assigned house.');
-            }
-        });
-    }
-});
-
-import { 
-    supabase, 
-    fetchHousesForDirector, 
-    assignHouseManager, 
-    submitBedUpdate, 
-    fetchHouses 
-} from './supabaseClient.js';
-
-document.addEventListener('DOMContentLoaded', () => {
-    const directorPanel = document.getElementById('directorPanel');
-    const tableBody = document.getElementById('directorHouseTableBody');
-
-    // 1. Detect Director Session on Auth Change
-    supabase.auth.onAuthStateChange(async (event, session) => {
-        if (session) {
-            try {
-                // Check if user is a director for any house
-                const directorHouses = await fetchHousesForDirector(session.user.id);
-
-                if (directorHouses && directorHouses.length > 0) {
-                    directorPanel.style.display = 'block';
-                    renderDirectorTable(directorHouses);
-                } else {
-                    directorPanel.style.display = 'none';
+            } finally {
+                if (submitBtn) {
+                    submitBtn.textContent = 'Log In';
+                    submitBtn.disabled = false;
                 }
-            } catch (err) {
-                console.error('Error loading director panel:', err);
             }
-        } else {
-            directorPanel.style.display = 'none';
-        }
-    });
-
-    // 2. Render Director House List
-    function renderDirectorTable(houses) {
-        tableBody.innerHTML = '';
-
-        houses.forEach(house => {
-            const total = (house.available_beds || 0) + (house.occupied_beds || 0) + 
-                          (house.reserved_beds || 0) + (house.maintenance_beds || 0);
-
-            const row = document.createElement('tr');
-            row.style.borderBottom = '1px solid var(--card-border)';
-            row.innerHTML = `
-                <td style="padding: 0.75rem; font-weight: 600;">${house.house_name}</td>
-                <td style="padding: 0.75rem; color: var(--text-muted);">${house.county}</td>
-                <td style="padding: 0.75rem;">${house.available_beds} / ${total}</td>
-                <td style="padding: 0.75rem;">
-                    <input type="text" 
-                           class="manager-input" 
-                           data-house-id="${house.id}" 
-                           value="${house.manager_id || ''}" 
-                           placeholder="Paste Manager User UID"
-                           style="width: 220px; font-size: 0.8rem; padding: 0.3rem 0.5rem; background: #0f172a; border: 1px solid var(--card-border); color: #fff; border-radius: 4px;">
-                </td>
-                <td style="padding: 0.75rem; text-align: right;">
-                    <button class="btn btn-outline save-manager-btn" data-house-id="${house.id}" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">
-                        Save Manager
-                    </button>
-                </td>
-            `;
-            tableBody.appendChild(row);
-        });
-
-        // Attach Event Listeners to "Save Manager" buttons
-        document.querySelectorAll('.save-manager-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const houseId = e.target.dataset.houseId;
-                const inputElem = document.querySelector(`.manager-input[data-house-id="${houseId}"]`);
-                const newManagerId = inputElem.value.trim();
-
-                try {
-                    e.target.textContent = 'Saving...';
-                    await assignHouseManager(houseId, newManagerId);
-                    alert('House manager successfully assigned!');
-                } catch (err) {
-                    alert('Failed to update manager assignment. Ensure you have director privileges.');
-                } finally {
-                    e.target.textContent = 'Save Manager';
-                }
-            });
         });
     }
-});
 
-/**
- * Toggles UI navbar buttons based on authentication state
- */
-function updateUIForAuth(isLoggedIn) {
-    const loginBtn = document.getElementById('openLoginModalBtn');
-    const signUpBtn = document.getElementById('openSignUpModalBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const managerNav = document.getElementById('managerPortalNav');
+    // Global Logout
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                await logoutManager();
+            } catch (err) {
+                alert('Logout failed: ' + err.message);
+            }
+        });
+    }
 
-    if (loginBtn) loginBtn.style.display = isLoggedIn ? 'none' : 'block';
-    if (signUpBtn) signUpBtn.style.display = isLoggedIn ? 'none' : 'block';
-    if (logoutBtn) logoutBtn.style.display = isLoggedIn ? 'block' : 'none';
-    if (managerNav) managerNav.style.display = isLoggedIn ? 'block' : 'none';
-}
-
-function setupEventListeners() {
-    // Public Filter controls
+    // Public Filters
     document.getElementById('searchInput')?.addEventListener('input', debounce(fetchAndRenderHouses, 300));
     document.getElementById('regionFilter')?.addEventListener('change', fetchAndRenderHouses);
     document.getElementById('countyFilter')?.addEventListener('change', fetchAndRenderHouses);
@@ -334,329 +90,90 @@ function setupEventListeners() {
     document.getElementById('supportFilter')?.addEventListener('change', fetchAndRenderHouses);
     document.getElementById('availableOnlyToggle')?.addEventListener('change', fetchAndRenderHouses);
 
-    // High Contrast Mode Toggle
-    document.getElementById('contrastToggle')?.addEventListener('click', toggleHighContrast);
-
-    // Auth Listeners
-    document.getElementById('signupForm')?.addEventListener('submit', handleSignUp);
-    document.getElementById('loginForm')?.addEventListener('submit', handleLogin);
-    document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
-    document.getElementById('resendConfirmBtn')?.addEventListener('click', resendVerificationEmail);
-
-    // Public Form Submissions
-    document.getElementById('holdModalForm')?.addEventListener('submit', handleStandbyHold);
+    // Feedback
     document.getElementById('feedbackForm')?.addEventListener('submit', handleFeedbackSubmit);
 }
 
-/**
- * Handles Company / Manager Sign Up with verification email trigger and origin redirect
- */
-async function handleSignUp(e) {
-    e.preventDefault();
-    const orgName = document.getElementById('signupOrgName')?.value.trim();
-    const email = document.getElementById('signupEmail')?.value.trim();
-    const password = document.getElementById('signupPassword')?.value;
+function initAuthListener() {
+    supabase.auth.onAuthStateChange(async (event, session) => {
+        currentSession = session;
+        updateUIForAuth(!!session);
 
-    if (!email || !password) return alert('Please complete all required fields.');
+        const authStatusBanner = document.getElementById('authStatusBanner');
 
-    const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-            data: { company_name: orgName },
-            emailRedirectTo: `${window.location.origin}`
+        if (session) {
+            try {
+                const assignedHouse = await fetchAssignedHouse(session.user.id);
+                if (authStatusBanner) {
+                    authStatusBanner.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                            <div>
+                                <strong>Logged in as:</strong> ${session.user.email}
+                                <div style="font-size: 0.85rem; color: var(--text-muted);">
+                                    Assigned House: <strong>${assignedHouse ? assignedHouse.house_name : 'No house assigned'}</strong>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                console.error('Error loading manager session details:', err);
+            }
+        } else {
+            if (authStatusBanner) {
+                authStatusBanner.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Public View (Read Only)</span>
+                    </div>
+                `;
+            }
         }
     });
-
-    if (error) {
-        alert('Registration error: ' + error.message);
-        return;
-    }
-
-    closeModal('signupModal');
-
-    if (data.user && !data.session) {
-        alert(`🎉 Account created! A confirmation email was sent to ${email}. Please verify your email before logging in.`);
-    } else {
-        alert('Account created successfully!');
-        await handleSessionChange(data.session);
-        await openOrgDashboard();
-    }
 }
 
-/**
- * Resends email confirmation link
- */
-async function resendVerificationEmail(e) {
-    if (e) e.preventDefault();
-    const email = currentSession?.user?.email || document.getElementById('loginEmail')?.value.trim();
+function updateUIForAuth(isLoggedIn) {
+    const loginBtn = document.getElementById('openLoginModalBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
 
-    if (!email) {
-        alert('Please enter your email address first.');
-        return;
-    }
-
-    const { error } = await supabase.auth.resend({ type: 'signup', email });
-
-    if (error) {
-        alert('Could not resend email: ' + error.message);
-    } else {
-        alert(`Verification email resent to ${email}. Check your inbox and spam folder.`);
-    }
+    if (loginBtn) loginBtn.style.display = isLoggedIn ? 'none' : 'block';
+    if (logoutBtn) logoutBtn.style.display = isLoggedIn ? 'block' : 'none';
 }
 
-/**
- * Handles Manager Sign In
- */
-async function handleLogin(e) {
-    e.preventDefault();
-    const email = document.getElementById('loginEmail')?.value.trim();
-    const password = document.getElementById('loginPassword')?.value;
-
-    if (!email || !password) return alert('Please enter both email and password.');
-
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (error) {
-        alert('Login failed: ' + error.message);
-    } else {
-        closeModal('loginModal');
-        await handleSessionChange(data.session);
-        await openOrgDashboard();
-    }
-}
-
-/**
- * Opens Organization Dashboard Modal with email confirmation check
- */
-window.openOrgDashboard = async function() {
-    if (!currentSession) {
-        alert('Please sign in to access your organization portal.');
-        return;
-    }
-
-    if (!currentSession.user?.email_confirmed_at) {
-        alert('⚠️ Please verify your email address before accessing the Management Portal.');
-        return;
-    }
-
-    await renderOrgDashboard();
-    document.getElementById('orgDashboardModal')?.classList.add('active');
-};
-
-/**
- * Renders individual house cards inside the Organization Portal
- */
-async function renderOrgDashboard() {
-    const grid = document.getElementById('orgHouseGrid');
-    if (!grid) return;
-
-    grid.innerHTML = '<div class="loading-spinner" role="status">Loading organization residences...</div>';
-
-    let query = supabase
-        .from('houses')
-        .select(`
-            *,
-            companies(name),
-            beds(total_beds, available_beds, last_updated_at)
-        `);
-
-    if (currentUserProfile?.company_id) {
-        query = query.eq('company_id', currentUserProfile.company_id);
-    } else if (currentUserProfile?.house_id) {
-        query = query.eq('id', currentUserProfile.house_id);
-    }
-
-    const { data: houses, error } = await query;
-
-    if (error) {
-        grid.innerHTML = `<p class="error-msg" role="alert">Error loading houses: ${error.message}</p>`;
-        return;
-    }
-
-    if (!houses || houses.length === 0) {
-        grid.innerHTML = `
-            <div class="no-results" role="status">
-                <p>No recovery residences are currently assigned to your account.</p>
-                <small>Contact MARR support to assign listings to your account.</small>
-            </div>
-        `;
-        return;
-    }
-
-    const orgName = houses[0]?.companies?.name || 'Your Organization';
-    const titleEl = document.getElementById('orgDashboardTitle');
-    if (titleEl) titleEl.innerText = `🏢 ${orgName} Management Portal`;
-
-    grid.innerHTML = '';
-
-    houses.forEach(house => {
-        const bedData = house.beds || { total_beds: 10, available_beds: 0, last_updated_at: null };
-        const isFresh = isWithin7Days(bedData.last_updated_at);
-
-        const card = document.createElement('div');
-        card.className = 'org-house-card';
-
-        card.innerHTML = `
-            <div class="org-card-header">
-                <div>
-                    <h4>${escapeHtml(house.name)}</h4>
-                    <p class="location-tag">📍 ${escapeHtml(house.city)}, ${escapeHtml(house.county)} Co.</p>
-                </div>
-                <span class="meta-pill ${isFresh ? 'fresh-updated' : 'stale-updated'}">
-                    ${isFresh ? 'Updated < 7 days' : 'Needs Verification Update'}
-                </span>
-            </div>
-
-            <form class="org-bed-form" onsubmit="handleHouseCardUpdate(event, '${house.id}')">
-                <div class="form-row">
-                    <div class="filter-group">
-                        <label for="total-${house.id}">Total Capacity</label>
-                        <input type="number" id="total-${house.id}" value="${bedData.total_beds ?? ''}" min="1" required>
-                    </div>
-                    <div class="filter-group">
-                        <label for="available-${house.id}">Available Open Beds</label>
-                        <input type="number" id="available-${house.id}" value="${bedData.available_beds ?? 0}" min="0" required>
-                    </div>
-                </div>
-                <button type="submit" class="btn btn-success full-width">
-                    ⚡ Update ${escapeHtml(house.name)} Status
-                </button>
-            </form>
-        `;
-
-        grid.appendChild(card);
-    });
-}
-
-/**
- * Saves capacity updates for an individual house card inside the Organization Portal
- */
-window.handleHouseCardUpdate = async function(e, houseId) {
-    e.preventDefault();
-
-    const totalBeds = parseInt(document.getElementById(`total-${houseId}`).value, 10);
-    const availableBeds = parseInt(document.getElementById(`available-${houseId}`).value, 10);
-
-    if (isNaN(totalBeds) || isNaN(availableBeds)) {
-        alert('Please enter valid bed numbers.');
-        return;
-    }
-
-    if (availableBeds > totalBeds) {
-        alert('Available beds cannot exceed total capacity.');
-        return;
-    }
-
-    const { error } = await supabase.from('beds').upsert([
-        {
-            house_id: houseId,
-            total_beds: totalBeds,
-            available_beds: availableBeds,
-            last_updated_at: new Date().toISOString()
-        }
-    ], { onConflict: 'house_id' });
-
-    if (error) {
-        alert('Update failed: ' + error.message);
-    } else {
-        alert('⚡ Bed capacity updated and live across Maine!');
-        await fetchAndRenderHouses();
-        await renderOrgDashboard();
-    }
-};
-
-/**
- * Handles Logout
- */
-async function handleLogout() {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-        alert('Logout failed: ' + error.message);
-    } else {
-        alert('Logged out successfully.');
-        closeModal('orgDashboardModal');
-        await fetchAndRenderHouses();
-    }
-}
-
-/**
- * Fetches and renders all sober houses from Supabase into individual cards
- */
 async function fetchAndRenderHouses() {
     const grid = document.getElementById('houseGrid');
     if (!grid) return;
 
-    grid.innerHTML = '<div class="loading-spinner" role="status">Loading sober houses...</div>';
+    grid.innerHTML = '<div class="loading-spinner">Loading sober houses...</div>';
 
     const search = document.getElementById('searchInput')?.value.trim();
     const region = document.getElementById('regionFilter')?.value;
     const county = document.getElementById('countyFilter')?.value;
-    const gender = document.getElementById('genderFilter')?.value;
-    const support = document.getElementById('supportFilter')?.value;
-    const availableOnly = document.getElementById('availableOnlyToggle')?.checked;
 
-    // Fetch all houses with joined company and bed details from Supabase
-    let query = supabase
-        .from('houses')
-        .select(`
-            *,
-            companies(name),
-            beds(total_beds, available_beds, last_updated_at),
-            hold_requests(id, expires_at, status)
-        `);
+    let query = supabase.from('houses').select('*');
 
     if (region) query = query.eq('region', region);
     if (county) query = query.eq('county', county);
-    if (gender) query = query.eq('gender_served', gender);
-    if (support) query = query.eq('support_level', support);
 
     const { data: houses, error } = await query;
 
     if (error) {
-        grid.innerHTML = `<p class="error-msg" role="alert">Error loading directory: ${error.message}</p>`;
+        grid.innerHTML = `<p class="error-msg">Error loading directory: ${error.message}</p>`;
         return;
     }
 
     let filtered = houses || [];
 
-    // Filter by search keyword (House Name, City, or Organization Name)
     if (search) {
         const term = search.toLowerCase();
         filtered = filtered.filter(h => 
-            (h.name && h.name.toLowerCase().includes(term)) || 
-            (h.city && h.city.toLowerCase().includes(term)) ||
-            (h.companies?.name && h.companies.name.toLowerCase().includes(term))
+            (h.house_name && h.house_name.toLowerCase().includes(term)) || 
+            (h.city && h.city.toLowerCase().includes(term))
         );
-    }
-
-    // Filter by available beds toggle
-    if (availableOnly) {
-        filtered = filtered.filter(h => h.beds && h.beds.available_beds > 0);
     }
 
     renderHouseCards(filtered);
 }
 
-/**
- * Renders public summary banner metrics
- */
-function renderPublicSummaryBanner(totalHouses, totalAvailable, totalCapacity) {
-    const banner = document.getElementById('publicSummaryBanner');
-    if (!banner) return;
-
-    banner.innerHTML = `
-        <div class="summary-stats">
-            <span><strong>${totalHouses}</strong> Residences Listed</span>
-            <span><strong>${totalAvailable}</strong> Open Beds Available</span>
-            <span><strong>${totalCapacity}</strong> Total Capacity</span>
-        </div>
-    `;
-}
-
-/**
- * Renders individual cards for each sober house listed in Supabase
- */
 function renderHouseCards(houses) {
     const grid = document.getElementById('houseGrid');
     if (!grid) return;
@@ -664,133 +181,33 @@ function renderHouseCards(houses) {
     grid.innerHTML = '';
 
     if (!houses || houses.length === 0) {
-        grid.innerHTML = '<div class="no-results" role="status">No recovery residences found matching your criteria.</div>';
+        grid.innerHTML = '<div class="no-results">No recovery residences found matching your criteria.</div>';
         return;
     }
 
-    // Calculate public aggregate metrics
-    let totalAvailableBeds = 0;
-    let totalCapacity = 0;
-
     houses.forEach(house => {
-        const bedData = house.beds || { total_beds: 0, available_beds: 0 };
-        const activeHolds = (house.hold_requests || []).filter(r => r.status === 'active' && new Date(r.expires_at) > new Date());
-        const netAvailable = Math.max(0, bedData.available_beds - activeHolds.length);
-
-        totalAvailableBeds += netAvailable;
-        totalCapacity += (bedData.total_beds || 0);
-    });
-
-    renderPublicSummaryBanner(houses.length, totalAvailableBeds, totalCapacity);
-
-    // Create an individual card element for each sober house
-    houses.forEach(house => {
-        const bedData = house.beds || { total_beds: 0, available_beds: 0, last_updated_at: null };
-        const isFresh = isWithin7Days(bedData.last_updated_at);
-        const activeHolds = (house.hold_requests || []).filter(r => r.status === 'active' && new Date(r.expires_at) > new Date());
-        const netAvailable = Math.max(0, bedData.available_beds - activeHolds.length);
-        
-        const orgName = house.companies?.name || 'Independent Residence';
-        const houseName = house.name || 'Unnamed Sober House';
-        const genderServed = house.gender_served || 'All Populations';
-        const supportLevel = house.support_level || 'Peer-Run Recovery';
-
         const card = document.createElement('article');
         card.className = 'house-card';
-        card.setAttribute('aria-label', `${houseName}, operated by ${orgName}`);
-
         card.innerHTML = `
             <div class="card-header">
                 <div>
-                    <!-- Organization / Company Name -->
-                    <span class="company-tag">🏢 ${escapeHtml(orgName)}</span>
-                    
-                    <!-- Sober House Name -->
-                    <h3 class="house-title">${escapeHtml(houseName)}</h3>
-                    
-                    <!-- Location -->
-                    <p class="location-tag">📍 ${escapeHtml(house.city || 'N/A')}, ${escapeHtml(house.county || '')} Co. (${escapeHtml(house.region || 'Maine')})</p>
-                </div>
-                ${house.is_marr_certified ? `
-                    <div class="marr-badge" title="MARR Certified Recovery Residence">
-                        ✓ MARR Verified
-                    </div>
-                ` : ''}
-            </div>
-
-            <!-- Bed Count & Capacity Display -->
-            <div class="bed-stat-box ${netAvailable > 0 ? 'status-open' : 'status-full'}">
-                <div class="bed-count-number">${netAvailable}</div>
-                <div class="bed-count-label">
-                    <strong>${netAvailable === 1 ? 'Open Bed Available' : 'Open Beds Available'}</strong>
-                    <small>out of ${bedData.total_beds} Total Capacity</small>
+                    <h3 class="house-title">${escapeHtml(house.house_name || 'Unnamed House')}</h3>
+                    <p class="location-tag">📍 ${escapeHtml(house.city || 'N/A')}, ${escapeHtml(house.county || '')} Co.</p>
                 </div>
             </div>
-
-            <!-- Population Served & House Details -->
-            <div class="card-meta">
-                <span class="meta-pill" title="Population Served">
-                    👤 <strong>Serves:</strong> ${escapeHtml(genderServed)}
-                </span>
-                <span class="meta-pill" title="Level of Support">
-                    🛡️ <strong>Support:</strong> ${escapeHtml(supportLevel)}
-                </span>
-                <span class="meta-pill ${isFresh ? 'fresh-updated' : 'stale-updated'}">
-                    ⏱️ ${isFresh ? 'Bed info updated recently' : 'Needs Verification Update'}
-                </span>
-            </div>
-
-            ${activeHolds.length > 0 ? `<p class="hold-warning">⚠️ ${activeHolds.length} temporary 24-hr hold(s) pending on this house.</p>` : ''}
-
-            <!-- Contact & Hold Action Buttons -->
-            <div class="card-actions">
-                <button class="btn btn-secondary" onclick="openHoldModal('${house.id}', '${escapeHtml(houseName)}')" ${netAvailable === 0 ? 'disabled' : ''}>
-                    ⏱ Hold Bed (24 Hours)
-                </button>
-                <a href="${house.phone ? 'tel:' + escapeHtml(house.phone) : '#'}" class="btn btn-primary" ${!house.phone ? 'aria-disabled="true"' : ''}>
-                    📞 Contact ${escapeHtml(houseName)}
-                </a>
+            <div class="bed-stat-box">
+                <div class="bed-count-number">${house.available_beds || 0}</div>
+                <div class="bed-count-label">Available Beds</div>
             </div>
         `;
-
         grid.appendChild(card);
     });
 }
 
-/**
- * Public 24-Hour Hold Submission
- */
-async function handleStandbyHold(e) {
-    e.preventDefault();
-    const houseId = document.getElementById('holdHouseId').value;
-    const clientAlias = document.getElementById('holdAlias').value.trim() || 'Anonymous Client';
-    const contactPhone = document.getElementById('holdPhone').value.trim();
-
-    const { error } = await supabase.from('hold_requests').insert([
-        {
-            house_id: houseId,
-            client_alias: clientAlias,
-            contact_phone: contactPhone,
-            expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-        }
-    ]);
-
-    if (error) {
-        alert('Could not place hold: ' + error.message);
-    } else {
-        alert('24-Hour Standby Hold confirmed!');
-        closeModal('holdModal');
-        await fetchAndRenderHouses();
-    }
-}
-
-/**
- * Public Feedback Submission
- */
 async function handleFeedbackSubmit(e) {
     e.preventDefault();
-    const category = document.getElementById('feedbackCategory').value;
-    const message = document.getElementById('feedbackMessage').value.trim();
+    const category = document.getElementById('feedbackCategory')?.value;
+    const message = document.getElementById('feedbackMessage')?.value.trim();
 
     const { error } = await supabase.from('feedback').insert([{ category, message }]);
 
@@ -798,7 +215,7 @@ async function handleFeedbackSubmit(e) {
         alert('Error submitting feedback: ' + error.message);
     } else {
         alert('Thank you for contributing to Apertus.');
-        document.getElementById('feedbackForm').reset();
+        document.getElementById('feedbackForm')?.reset();
         await loadFeedback();
     }
 }
@@ -812,20 +229,19 @@ async function loadFeedback() {
     if (data) {
         list.innerHTML = data.map(item => `
             <div class="feedback-card">
-                <div class="feedback-header">
-                    <strong>${escapeHtml(item.category)}</strong>
-                    <span class="badge badge-${(item.status || 'pending').toLowerCase().replace(' ', '-')}">${escapeHtml(item.status || 'Pending')}</span>
-                </div>
+                <strong>${escapeHtml(item.category)}</strong>
                 <p>${escapeHtml(item.message)}</p>
             </div>
         `).join('');
     }
 }
 
-function toggleHighContrast() {
-    document.body.classList.toggle('high-contrast');
-    const isHigh = document.body.classList.contains('high-contrast');
-    localStorage.setItem('apertus_high_contrast', isHigh ? 'true' : 'false');
+function subscribeToRealtimeUpdates() {
+    supabase.channel('public-bed-updates')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'houses' }, () => {
+            fetchAndRenderHouses();
+        })
+        .subscribe();
 }
 
 function debounce(func, wait) {
@@ -841,44 +257,3 @@ function escapeHtml(str) {
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
     }[m]));
 }
-
-// Global modal helpers
-window.openHoldModal = (houseId, houseName) => {
-    document.getElementById('holdHouseId').value = houseId;
-    document.getElementById('holdHouseTitle').innerText = houseName;
-    document.getElementById('holdModal').classList.add('active');
-};
-
-window.closeModal = (modalId) => {
-    document.getElementById(modalId)?.classList.remove('active');
-};
-
-// updated bed numbers from manager
-import { supabase, submitBedUpdate, fetchHouses, isWithin7Days } from './supabaseClient.js';
-
-document.addEventListener('DOMContentLoaded', () => {
-    const updateForm = document.getElementById('updateBedForm');
-
-    if (updateForm) {
-        updateForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            // Get house ID from dataset or select input
-            const houseId = updateForm.dataset.houseId; 
-
-            const bedMetrics = {
-                available: document.getElementById('inputAvailable').value,
-                occupied: document.getElementById('inputOccupied').value,
-                reserved: document.getElementById('inputReserved').value,
-                maintenance: document.getElementById('inputMaintenance').value
-            };
-
-            try {
-                await submitBedUpdate(houseId, bedMetrics);
-                alert('Bed status successfully updated live!');
-            } catch (err) {
-                alert('Failed to update bed status. Check your network connection.');
-            }
-        });
-    }
-});
