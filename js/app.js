@@ -41,12 +41,11 @@ function subscribeToRealtimeUpdates() {
 }
 
 /**
- * Initializes Supabase Auth listeners and session status checks
+ * Initializes Supabase Auth listeners.
+ * Relying solely on onAuthStateChange handles initial session load (INITIAL_SESSION) 
+ * as well as SIGNED_IN, SIGNED_OUT, and TOKEN_REFRESHED events without duplicate runs.
  */
 async function initAuth() {
-    const { data: { session } } = await supabase.auth.getSession();
-    await handleSessionChange(session);
-
     supabase.auth.onAuthStateChange(async (_event, session) => {
         await handleSessionChange(session);
     });
@@ -139,7 +138,7 @@ function setupEventListeners() {
 }
 
 /**
- * Handles Company / Manager Sign Up with verification email trigger
+ * Handles Company / Manager Sign Up with verification email trigger and origin redirect
  */
 async function handleSignUp(e) {
     e.preventDefault();
@@ -153,7 +152,8 @@ async function handleSignUp(e) {
         email,
         password,
         options: {
-            data: { company_name: orgName }
+            data: { company_name: orgName },
+            emailRedirectTo: `${window.location.origin}`
         }
     });
 
@@ -216,11 +216,16 @@ async function handleLogin(e) {
 }
 
 /**
- * Opens Organization Dashboard Modal
+ * Opens Organization Dashboard Modal with email confirmation check
  */
 window.openOrgDashboard = async function() {
-    if (!currentUserProfile) {
+    if (!currentSession) {
         alert('Please sign in to access your organization portal.');
+        return;
+    }
+
+    if (!currentSession.user?.email_confirmed_at) {
+        alert('⚠️ Please verify your email address before accessing the Management Portal.');
         return;
     }
 
@@ -270,7 +275,7 @@ async function renderOrgDashboard() {
 
     const orgName = houses[0]?.companies?.name || 'Your Organization';
     const titleEl = document.getElementById('orgDashboardTitle');
-    if (titleEl) titleEl.innerText = `🏢 ${orgName} - Management Portal`;
+    if (titleEl) titleEl.innerText = `🏢 ${orgName} Management Portal`;
 
     grid.innerHTML = '';
 
