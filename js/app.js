@@ -318,24 +318,85 @@ function renderHouseCards(houses) {
         return;
     }
 
+    function renderHouseCards(houses) {
+    const grid = document.getElementById('houseGrid');
+    if (!grid) return;
+
+    grid.innerHTML = '';
+
+    if (!houses || houses.length === 0) {
+        grid.innerHTML = '<div class="no-results" style="padding: 1rem; color: var(--text-muted);">No recovery residences found matching your criteria.</div>';
+        return;
+    }
+
     houses.forEach(house => {
         const card = document.createElement('article');
         card.className = 'house-card';
+        card.style.cssText = 'background: #1e293b; border: 1px solid var(--card-border, #334155); border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;';
+        
+        const parentOrg = house.parent_company || house.company_name || 'Independent Residence';
+        const rentDisplay = house.rent_amount ? `$${Number(house.rent_amount).toLocaleString()}/wk` : 'Contact for Rent';
+        const moveInDisplay = house.move_in_cost ? `$${Number(house.move_in_cost).toLocaleString()}` : 'Contact for Details';
+        const insuranceDisplay = house.insurance_accepted || 'Self-Pay';
+
         card.innerHTML = `
-            <div class="card-header">
+            <!-- Top Section: Org & House Name -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.75rem;">
                 <div>
-                    <h3 class="house-title">${escapeHtml(house.house_name || 'Unnamed House')}</h3>
-                    <p class="location-tag">📍 ${escapeHtml(house.city || 'N/A')}, ${escapeHtml(house.county || '')} Co.</p>
+                    <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #38bdf8; font-weight: 600; margin-bottom: 0.2rem;">
+                        🏢 ${escapeHtml(parentOrg)}
+                    </div>
+                    <h3 style="margin: 0; color: #fff; font-size: 1.15rem; font-weight: 700;">
+                        ${escapeHtml(house.house_name)}
+                    </h3>
+                    <p style="margin: 0.3rem 0 0 0; color: #94a3b8; font-size: 0.85rem;">
+                        📍 ${escapeHtml(house.city || 'N/A')}, ${escapeHtml(house.county || '')} County
+                    </p>
+                </div>
+
+                <!-- Badges & Bed Counter -->
+                <div style="display: flex; align-items: center; gap: 0.6rem;">
+                    <span style="background: #0284c7; color: #fff; padding: 0.25rem 0.65rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">
+                        ${escapeHtml(house.gender || 'N/A')}
+                    </span>
+
+                    <span title="MARR Level of Support" style="background: #334155; color: #38bdf8; padding: 0.2rem; border-radius: 50%; font-size: 0.75rem; font-weight: bold; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #475569;">
+                        L${house.level_of_support || 1}
+                    </span>
+
+                    <div style="background: #0f172a; padding: 0.4rem 0.85rem; border-radius: 6px; text-align: center; border: 1px solid #1e293b;">
+                        <span style="font-size: 1.25rem; font-weight: bold; color: ${house.available_beds > 0 ? '#22c55e' : '#94a3b8'};">
+                            ${house.available_beds || 0}
+                        </span>
+                        <span style="font-size: 0.7rem; color: #94a3b8; display: block; text-transform: uppercase;">Open Beds</span>
+                    </div>
                 </div>
             </div>
-            <div class="bed-stat-box">
-                <div class="bed-count-number">${house.available_beds || 0}</div>
-                <div class="bed-count-label">Available Beds</div>
+
+            <hr style="border: 0; border-top: 1px solid #334155; margin: 1rem 0;" />
+
+            <!-- Bottom Section: Pricing & Insurance Info -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
+                <div style="background: #0f172a; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid #1e293b;">
+                    <div style="color: #94a3b8; font-size: 0.75rem;">Rent</div>
+                    <div style="color: #f8fafc; font-weight: 600; margin-top: 0.1rem;">💵 ${rentDisplay}</div>
+                </div>
+
+                <div style="background: #0f172a; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid #1e293b;">
+                    <div style="color: #94a3b8; font-size: 0.75rem;">Move-in Cost</div>
+                    <div style="color: #f8fafc; font-weight: 600; margin-top: 0.1rem;">🔑 ${moveInDisplay}</div>
+                </div>
+
+                <div style="background: #0f172a; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid #1e293b; grid-column: span 1 / -1;">
+                    <div style="color: #94a3b8; font-size: 0.75rem;">Insurance / Funding</div>
+                    <div style="color: #38bdf8; font-weight: 600; margin-top: 0.1rem;">💳 ${escapeHtml(insuranceDisplay)}</div>
+                </div>
             </div>
         `;
         grid.appendChild(card);
     });
 }
+
 
 async function handleFeedbackSubmit(e) {
     e.preventDefault();
