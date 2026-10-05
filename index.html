@@ -54,6 +54,63 @@
     </header>
 
     <main id="main-content" role="main" class="container" style="margin-top: 1.5rem;">
+        <!-- 1. Manager Bed Update Form -->
+<section id="managerUpdateSection" class="filter-card" style="display: none; margin-bottom: 2rem;">
+    <h3>Update Bed Availability</h3>
+    <p id="managerHouseLabel" style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;"></p>
+    
+    <form id="updateBedForm">
+        <div class="filter-grid">
+            <div class="filter-group">
+                <label for="inputAvailable">Available Beds</label>
+                <input type="number" id="inputAvailable" min="0" required>
+            </div>
+            <div class="filter-group">
+                <label for="inputOccupied">Occupied Beds</label>
+                <input type="number" id="inputOccupied" min="0" required>
+            </div>
+            <div class="filter-group">
+                <label for="inputReserved">Reserved Beds</label>
+                <input type="number" id="inputReserved" min="0" required>
+            </div>
+            <div class="filter-group">
+                <label for="inputMaintenance">Maintenance Beds</label>
+                <input type="number" id="inputMaintenance" min="0" required>
+            </div>
+        </div>
+        <button type="submit" id="saveBedBtn" class="btn btn-success full-width" style="margin-top: 1rem;">
+            Update Bed Counts Live
+        </button>
+    </form>
+</section>
+
+<!-- 2. Director Dashboard Panel -->
+<section id="directorPanel" class="filter-card" style="display: none; margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div>
+            <h2>Organization Director Dashboard</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Manage network residences & assign house managers</p>
+        </div>
+        <span class="badge badge-available">Director Access</span>
+    </div>
+
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--card-border); color: var(--text-muted);">
+                    <th style="padding: 0.75rem;">House Name</th>
+                    <th style="padding: 0.75rem;">County</th>
+                    <th style="padding: 0.75rem;">Beds (Avail/Total)</th>
+                    <th style="padding: 0.75rem;">Manager User UID</th>
+                    <th style="padding: 0.75rem; text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="directorHouseTableBody">
+                <!-- Rendered dynamically by JS -->
+            </tbody>
+        </table>
+    </div>
+</section>
         <!-- Auth Bar / Status Area -->
         <div id="authStatusBanner" class="filter-card" style="margin-bottom: 1.5rem;">
             <!-- Rendered dynamically by JS -->
@@ -206,30 +263,7 @@
         </button>
     </form>
 </section>
-
-        <!-- Community Feedback Forum -->
-        <section class="feedback-section">
-            <h3>Community Feedback Forum</h3>
-            <div class="feedback-layout">
-                <form id="feedbackForm" class="feedback-form">
-                    <div class="filter-group">
-                        <label for="feedbackCategory">Feedback Type</label>
-                        <select id="feedbackCategory" required>
-                            <option value="Bug Report">Bug Report</option>
-                            <option value="Feature Request">Feature Request</option>
-                            <option value="Listing Discrepancy">Listing Discrepancy</option>
-                            <option value="General Feedback">General Feedback</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label for="feedbackMessage">Your Feedback / Suggestion</label>
-                        <textarea id="feedbackMessage" rows="4" required placeholder="Help us improve access to recovery housing..."></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-blue">Submit Feedback</button>
-                </form>
-                <div id="feedbackList" class="feedback-list"></div>
-            </div>
-        </section>
+          
     </main>
 
     <script type="module" src="js/app.js"></script>

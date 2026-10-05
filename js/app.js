@@ -3,12 +3,15 @@ import {
     loginManager, 
     logoutManager, 
     fetchAssignedHouse, 
+    fetchHousesForDirector,
+    assignHouseManager,
     submitBedUpdate, 
     fetchHouses, 
     isWithin7Days 
 } from './supabaseClient.js';
 
 let currentSession = null;
+let currentManagerHouse = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     initApp();
@@ -24,12 +27,13 @@ async function initApp() {
 
 function setupEventListeners() {
     const loginForm = document.getElementById('loginForm');
+    const updateBedForm = document.getElementById('updateBedForm');
     const openLoginBtn = document.getElementById('openLoginModalBtn');
     const closeLoginBtn = document.getElementById('closeLoginBtn');
     const logoutBtn = document.getElementById('logoutBtn');
     const loginCard = document.getElementById('loginCard');
 
-    // Toggle Login Card
+    // Modal / Card Toggles
     if (openLoginBtn && loginCard) {
         openLoginBtn.addEventListener('click', () => {
             loginCard.style.display = loginCard.style.display === 'none' || !loginCard.style.display ? 'block' : 'none';
@@ -42,7 +46,7 @@ function setupEventListeners() {
         });
     }
 
-    // Login Form Submission
+    // 1. Manager Login Handler
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -71,7 +75,46 @@ function setupEventListeners() {
         });
     }
 
-    // Global Logout
+    // 2. Manager Bed Update Form Submission
+    if (updateBedForm) {
+        updateBedForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!currentManagerHouse) {
+                alert('No house assigned to your account.');
+                return;
+            }
+
+            const bedMetrics = {
+                available: document.getElementById('inputAvailable').value,
+                occupied: document.getElementById('inputOccupied').value,
+                reserved: document.getElementById('inputReserved').value,
+                maintenance: document.getElementById('inputMaintenance').value
+            };
+
+            const saveBtn = document.getElementById('saveBedBtn');
+
+            try {
+                if (saveBtn) {
+                    saveBtn.textContent = 'Saving...';
+                    saveBtn.disabled = true;
+                }
+
+                await submitBedUpdate(currentManagerHouse.id, bedMetrics);
+                alert('⚡ Bed counts updated live in Supabase cloud!');
+                await fetchAndRenderHouses();
+            } catch (err) {
+                alert('Permission denied or network error. Could not update bed counts.');
+            } finally {
+                if (saveBtn) {
+                    saveBtn.textContent = 'Update Bed Counts Live';
+                    saveBtn.disabled = false;
+                }
+            }
+        });
+    }
+
+    // 3. Logout Handler
     if (logoutBtn) {
         logoutBtn.addEventListener('click', async () => {
             try {
@@ -82,7 +125,7 @@ function setupEventListeners() {
         });
     }
 
-    // Public Filters
+    // Public Directory Filters
     document.getElementById('searchInput')?.addEventListener('input', debounce(fetchAndRenderHouses, 300));
     document.getElementById('regionFilter')?.addEventListener('change', fetchAndRenderHouses);
     document.getElementById('countyFilter')?.addEventListener('change', fetchAndRenderHouses);
@@ -100,26 +143,63 @@ function initAuthListener() {
         updateUIForAuth(!!session);
 
         const authStatusBanner = document.getElementById('authStatusBanner');
+        const managerUpdateSection = document.getElementById('managerUpdateSection');
+        const directorPanel = document.getElementById('directorPanel');
 
         if (session) {
+            // Check Manager Assignment
             try {
-                const assignedHouse = await fetchAssignedHouse(session.user.id);
+                currentManagerHouse = await fetchAssignedHouse(session.user.id);
+
+                if (currentManagerHouse && managerUpdateSection) {
+                    managerUpdateSection.style.display = 'block';
+                    document.getElementById('managerHouseLabel').textContent = 
+                        `Editing residence: ${currentManagerHouse.house_name} (${currentManagerHouse.county} Co.)`;
+
+                    // Pre-fill existing counts in the form
+                    document.getElementById('inputAvailable').value = currentManagerHouse.available_beds || 0;
+                    document.getElementById('inputOccupied').value = currentManagerHouse.occupied_beds || 0;
+                    document.getElementById('inputReserved').value = currentManagerHouse.reserved_beds || 0;
+                    document.getElementById('inputMaintenance').value = currentManagerHouse.maintenance_beds || 0;
+                } else if (managerUpdateSection) {
+                    managerUpdateSection.style.display = 'none';
+                }
+
                 if (authStatusBanner) {
                     authStatusBanner.innerHTML = `
                         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
                             <div>
                                 <strong>Logged in as:</strong> ${session.user.email}
                                 <div style="font-size: 0.85rem; color: var(--text-muted);">
-                                    Assigned House: <strong>${assignedHouse ? assignedHouse.house_name : 'No house assigned'}</strong>
+                                    Assigned House: <strong>${currentManagerHouse ? currentManagerHouse.house_name : 'None (Read-Only / Admin)'}</strong>
                                 </div>
                             </div>
                         </div>
                     `;
                 }
             } catch (err) {
-                console.error('Error loading manager session details:', err);
+                console.error('Error fetching manager house:', err);
             }
+
+            // Check Director Access
+            try {
+                const directorHouses = await fetchHousesForDirector(session.user.id);
+                if (directorHouses && directorHouses.length > 0 && directorPanel) {
+                    directorPanel.style.display = 'block';
+                    renderDirectorTable(directorHouses);
+                } else if (directorPanel) {
+                    directorPanel.style.display = 'none';
+                }
+            } catch (err) {
+                console.error('Error loading director access:', err);
+            }
+
         } else {
+            // Logged Out State
+            currentManagerHouse = null;
+            if (managerUpdateSection) managerUpdateSection.style.display = 'none';
+            if (directorPanel) directorPanel.style.display = 'none';
+
             if (authStatusBanner) {
                 authStatusBanner.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -128,6 +208,59 @@ function initAuthListener() {
                 `;
             }
         }
+    });
+}
+
+function renderDirectorTable(houses) {
+    const tableBody = document.getElementById('directorHouseTableBody');
+    if (!tableBody) return;
+
+    tableBody.innerHTML = '';
+
+    houses.forEach(house => {
+        const total = (house.available_beds || 0) + (house.occupied_beds || 0) + 
+                      (house.reserved_beds || 0) + (house.maintenance_beds || 0);
+
+        const row = document.createElement('tr');
+        row.style.borderBottom = '1px solid var(--card-border)';
+        row.innerHTML = `
+            <td style="padding: 0.75rem; font-weight: 600;">${escapeHtml(house.house_name)}</td>
+            <td style="padding: 0.75rem; color: var(--text-muted);">${escapeHtml(house.county)}</td>
+            <td style="padding: 0.75rem;">${house.available_beds || 0} / ${total}</td>
+            <td style="padding: 0.75rem;">
+                <input type="text" 
+                       class="manager-input" 
+                       data-house-id="${house.id}" 
+                       value="${house.manager_id || ''}" 
+                       placeholder="Paste Manager User UID"
+                       style="width: 220px; font-size: 0.8rem; padding: 0.3rem 0.5rem; background: #0f172a; border: 1px solid var(--card-border); color: #fff; border-radius: 4px;">
+            </td>
+            <td style="padding: 0.75rem; text-align: right;">
+                <button class="btn btn-outline save-manager-btn" data-house-id="${house.id}" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">
+                    Save Manager
+                </button>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+
+    // Attach Event Listeners to "Save Manager" buttons
+    document.querySelectorAll('.save-manager-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const houseId = e.target.dataset.houseId;
+            const inputElem = document.querySelector(`.manager-input[data-house-id="${houseId}"]`);
+            const newManagerId = inputElem ? inputElem.value.trim() : '';
+
+            try {
+                e.target.textContent = 'Saving...';
+                await assignHouseManager(houseId, newManagerId);
+                alert('House manager successfully updated!');
+            } catch (err) {
+                alert('Failed to update manager assignment. Ensure you have director privileges in Supabase.');
+            } finally {
+                e.target.textContent = 'Save Manager';
+            }
+        });
     });
 }
 
