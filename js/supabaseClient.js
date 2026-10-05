@@ -64,3 +64,42 @@ export async function fetchHouses() {
 
     return data;
 }
+
+// --- Authentication Utilities ---
+
+/**
+ * Log in a manager with Email & Password
+ */
+export async function loginManager(email, password) {
+    const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+    });
+    if (error) throw error;
+    return data;
+}
+
+/**
+ * Log out the active manager
+ */
+export async function logoutManager() {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+}
+
+/**
+ * Fetch the specific house assigned to a logged-in manager ID
+ */
+export async function fetchAssignedHouse(userId) {
+    const { data, error } = await supabase
+        .from('houses')
+        .select('*')
+        .eq('manager_id', userId)
+        .maybeSingle();
+
+    if (error) {
+        console.error('Error fetching assigned house:', error.message);
+        throw error;
+    }
+    return data;
+}

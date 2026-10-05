@@ -53,6 +53,29 @@
         </div>
     </header>
 
+    <!-- Auth Bar / Status Area -->
+<div id="authStatusBanner" class="filter-card" style="margin-bottom: 1.5rem;">
+    <!-- Rendered dynamically by JS -->
+</div>
+
+<!-- Login Form Modal or Card -->
+<div id="loginCard" class="filter-card" style="display: none;">
+    <h3>House Manager Login</h3>
+    <form id="loginForm" style="margin-top: 1rem;">
+        <div class="filter-group">
+            <label for="loginEmail">Email Address</label>
+            <input type="email" id="loginEmail" placeholder="manager@example.com" required>
+        </div>
+        <div class="filter-group" style="margin-top: 0.75rem;">
+            <label for="loginPassword">Password</label>
+            <input type="password" id="loginPassword" placeholder="••••••••" required>
+        </div>
+        <button type="submit" id="loginBtn" class="btn btn-primary full-width" style="margin-top: 1rem;">
+            Log In
+        </button>
+    </form>
+</div>
+
     <!-- Dynamic Search & Filter Controls -->
         <section class="filter-card" aria-label="Bed Directory Filters">
             <div class="filter-grid">

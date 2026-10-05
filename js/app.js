@@ -16,6 +16,7 @@ async function initApp() {
     subscribeToRealtimeUpdates();
 }
 
+
 /**
  * Enables Supabase Realtime WebSocket subscriptions so all public clients update live
  */
@@ -98,6 +99,131 @@ async function handleSessionChange(session) {
     if (alertBanner) alertBanner.style.display = 'none';
     updateUIForAuth(false);
 }
+
+import { 
+    supabase, 
+    loginManager, 
+    logoutManager, 
+    fetchAssignedHouse, 
+    submitBedUpdate, 
+    fetchHouses 
+} from './supabaseClient.js';
+
+document.addEventListener('DOMContentLoaded', () => {
+    const loginForm = document.getElementById('loginForm');
+    const updateForm = document.getElementById('updateBedForm');
+    const houseSelect = document.getElementById('houseSelect');
+    const authStatusBanner = document.getElementById('authStatusBanner');
+    const loginCard = document.getElementById('loginCard');
+
+    let currentManagerHouse = null;
+
+    // 1. Listen for Supabase Authentication State Changes
+    supabase.auth.onAuthStateChange(async (event, session) => {
+        if (session) {
+            // Manager logged in
+            try {
+                currentManagerHouse = await fetchAssignedHouse(session.user.id);
+                renderAuthBanner(session.user.email, currentManagerHouse);
+                loginCard.style.display = 'none';
+
+                if (currentManagerHouse) {
+                    // Auto-select manager's assigned house and lock dropdown
+                    houseSelect.value = currentManagerHouse.id;
+                    houseSelect.disabled = true;
+                    
+                    // Pre-fill current counts in update form
+                    document.getElementById('inputAvailable').value = currentManagerHouse.available_beds;
+                    document.getElementById('inputOccupied').value = currentManagerHouse.occupied_beds;
+                    document.getElementById('inputReserved').value = currentManagerHouse.reserved_beds;
+                    document.getElementById('inputMaintenance').value = currentManagerHouse.maintenance_beds;
+                }
+            } catch (err) {
+                console.error('Failed to resolve manager house:', err);
+            }
+        } else {
+            // Unauthenticated / Public visitor mode
+            currentManagerHouse = null;
+            renderLoggedOutBanner();
+            if (houseSelect) houseSelect.disabled = false;
+        }
+    });
+
+    // 2. Render Auth Banner UI
+    function renderAuthBanner(email, assignedHouse) {
+        authStatusBanner.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                <div>
+                    <strong>Logged in as:</strong> ${email}
+                    <div style="font-size: 0.85rem; color: var(--text-muted);">
+                        Assigned House: <strong>${assignedHouse ? assignedHouse.house_name : 'No house assigned'}</strong>
+                    </div>
+                </div>
+                <button id="logoutBtn" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+                    Log Out
+                </button>
+            </div>
+        `;
+        document.getElementById('logoutBtn').addEventListener('click', () => logoutManager());
+    }
+
+    function renderLoggedOutBanner() {
+        authStatusBanner.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                <span>Public View (Read Only)</span>
+                <button id="showLoginBtn" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+                    Manager Login
+                </button>
+            </div>
+        `;
+        document.getElementById('showLoginBtn').addEventListener('click', () => {
+            loginCard.style.display = loginCard.style.display === 'none' ? 'block' : 'none';
+        });
+    }
+
+    // 3. Handle Login Submit
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                await loginManager(email, password);
+                loginForm.reset();
+            } catch (err) {
+                alert(`Login failed: ${err.message}`);
+            }
+        });
+    }
+
+    // 4. Handle Bed Update Submit
+    if (updateForm) {
+        updateForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const targetHouseId = houseSelect.value;
+            if (!targetHouseId) {
+                alert('Please select a house to update.');
+                return;
+            }
+
+            const bedMetrics = {
+                available: document.getElementById('inputAvailable').value,
+                occupied: document.getElementById('inputOccupied').value,
+                reserved: document.getElementById('inputReserved').value,
+                maintenance: document.getElementById('inputMaintenance').value
+            };
+
+            try {
+                await submitBedUpdate(targetHouseId, bedMetrics);
+                alert('Beds updated live in Supabase cloud!');
+            } catch (err) {
+                alert('Permission denied: You can only update your assigned house.');
+            }
+        });
+    }
+});
 
 /**
  * Toggles UI navbar buttons based on authentication state
