@@ -53,9 +53,13 @@ body {
 }
 
 .brand {
-    background-image: url(assets/apertus_logo.png);
-    height: 3%;
-    
+    background-image: url('assets/apertus_logo.png');
+    background-size: contain;      /* Scales logo to fit without cropping */
+    background-repeat: no-repeat;  
+    background-position: left center; 
+    height: 40px;                  
+    width: 160px;                  
+    display: inline-block;         
 }
 
 
