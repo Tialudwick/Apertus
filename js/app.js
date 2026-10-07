@@ -208,32 +208,82 @@ function renderDirectorTable(houses) {
     tableBody.innerHTML = '';
 
     houses.forEach(house => {
-        const total = (house.available_beds || 0) + (house.occupied_beds || 0) + 
-                      (house.reserved_beds || 0) + (house.maintenance_beds || 0);
-
         const row = document.createElement('tr');
         row.style.borderBottom = '1px solid var(--card-border)';
         row.innerHTML = `
-            <td style="padding: 0.75rem; font-weight: 600;">${escapeHtml(house.house_name)}</td>
-            <td style="padding: 0.75rem; color: var(--text-muted);">${escapeHtml(house.county)}</td>
-            <td style="padding: 0.75rem;">${house.available_beds || 0} / ${total}</td>
-            <td style="padding: 0.75rem;">
-                <input type="text" 
-                       class="manager-input" 
-                       data-house-id="${house.id}" 
-                       value="${house.manager_id || ''}" 
-                       placeholder="Paste Manager User UID"
-                       style="width: 220px; font-size: 0.8rem; padding: 0.3rem 0.5rem; background: #0f172a; border: 1px solid var(--card-border); color: #fff; border-radius: 4px;">
+            <td style="padding: 0.75rem; font-weight: 600; vertical-align: middle;">
+                ${escapeHtml(house.house_name)}
+                <div style="font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(house.city || '')}</div>
             </td>
-            <td style="padding: 0.75rem; text-align: right;">
-                <button class="btn btn-outline save-manager-btn" data-house-id="${house.id}" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">
-                    Save Manager
-                </button>
+            <td style="padding: 0.75rem; color: var(--text-muted); vertical-align: middle;">
+                ${escapeHtml(house.county)}
+            </td>
+            
+            <!-- Director Bed Count Inputs -->
+            <td style="padding: 0.75rem; vertical-align: middle;">
+                <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
+                    <label style="font-size: 0.7rem; color: #22c55e;">Avail:
+                        <input type="number" min="0" class="bed-avail-input" data-house-id="${house.id}" value="${house.available_beds || 0}" style="width: 48px; padding: 0.2rem; background: #0f172a; border: 1px solid #334155; color: #fff; text-align: center; border-radius: 4px;">
+                    </label>
+                    <label style="font-size: 0.7rem; color: #eab308;">Occ:
+                        <input type="number" min="0" class="bed-occ-input" data-house-id="${house.id}" value="${house.occupied_beds || 0}" style="width: 48px; padding: 0.2rem; background: #0f172a; border: 1px solid #334155; color: #fff; text-align: center; border-radius: 4px;">
+                    </label>
+                    <label style="font-size: 0.7rem; color: #3b82f6;">Res:
+                        <input type="number" min="0" class="bed-res-input" data-house-id="${house.id}" value="${house.reserved_beds || 0}" style="width: 48px; padding: 0.2rem; background: #0f172a; border: 1px solid #334155; color: #fff; text-align: center; border-radius: 4px;">
+                    </label>
+                    <label style="font-size: 0.7rem; color: #ef4444;">Maint:
+                        <input type="number" min="0" class="bed-maint-input" data-house-id="${house.id}" value="${house.maintenance_beds || 0}" style="width: 48px; padding: 0.2rem; background: #0f172a; border: 1px solid #334155; color: #fff; text-align: center; border-radius: 4px;">
+                    </label>
+                    <button class="btn btn-success save-beds-btn" data-house-id="${house.id}" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                        Save Beds
+                    </button>
+                </div>
+            </td>
+
+            <!-- Manager Assignment Input -->
+            <td style="padding: 0.75rem; vertical-align: middle;">
+                <div style="display: flex; gap: 0.3rem; align-items: center;">
+                    <input type="text" 
+                           class="manager-input" 
+                           data-house-id="${house.id}" 
+                           value="${house.manager_id || ''}" 
+                           placeholder="Paste Manager UID"
+                           style="width: 170px; font-size: 0.75rem; padding: 0.3rem; background: #0f172a; border: 1px solid var(--card-border); color: #fff; border-radius: 4px;">
+                    <button class="btn btn-outline save-manager-btn" data-house-id="${house.id}" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                        Assign
+                    </button>
+                </div>
             </td>
         `;
         tableBody.appendChild(row);
     });
 
+    // Event Listener for Director Bed Updates
+    document.querySelectorAll('.save-beds-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const houseId = e.target.dataset.houseId;
+            const available = document.querySelector(`.bed-avail-input[data-house-id="${houseId}"]`)?.value || 0;
+            const occupied = document.querySelector(`.bed-occ-input[data-house-id="${houseId}"]`)?.value || 0;
+            const reserved = document.querySelector(`.bed-res-input[data-house-id="${houseId}"]`)?.value || 0;
+            const maintenance = document.querySelector(`.bed-maint-input[data-house-id="${houseId}"]`)?.value || 0;
+
+            try {
+                e.target.textContent = 'Saving...';
+                e.target.disabled = true;
+
+                await submitBedUpdate(houseId, { available, occupied, reserved, maintenance });
+                alert('Bed counts updated live in Supabase!');
+                await fetchAndRenderHouses();
+            } catch (err) {
+                alert('Failed to update beds: ' + err.message);
+            } finally {
+                e.target.textContent = 'Save Beds';
+                e.target.disabled = false;
+            }
+        });
+    });
+
+    // Event Listener for Manager Assignments
     document.querySelectorAll('.save-manager-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             const houseId = e.target.dataset.houseId;
@@ -242,12 +292,14 @@ function renderDirectorTable(houses) {
 
             try {
                 e.target.textContent = 'Saving...';
+                e.target.disabled = true;
                 await assignHouseManager(houseId, newManagerId);
-                alert('House manager successfully updated!');
+                alert('House manager assignment updated!');
             } catch (err) {
-                alert('Failed to update manager assignment. Ensure you have director privileges in Supabase.');
+                alert('Failed to update manager assignment.');
             } finally {
-                e.target.textContent = 'Save Manager';
+                e.target.textContent = 'Assign';
+                e.target.disabled = false;
             }
         });
     });
