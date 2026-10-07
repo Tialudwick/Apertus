@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apertus | Organization & Manager Dashboard</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/accessibility.css">
+    <!-- Supabase JS Client library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="dark-theme">
+
+    <!-- Navigation Bar -->
+    <header role="banner" class="navbar">
+        <div class="nav-container" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem;">
+            <a href="index.html" class="brand" aria-label="Apertus Home">
+                <img src="assets/apertus_logo.png" alt="Apertus Logo" class="brand-logo" style="max-height: 40px;">
+            </a>
+            <div class="nav-actions" style="display: flex; gap: 1rem; align-items: center;">
+                <a href="index.html" class="btn btn-outline">← Public Bed Directory</a>
+                <button id="logoutBtn" class="btn btn-outline" style="display: none;">Log Out</button>
+            </div>
+        </div>
+    </header>
+
+    <main id="main-content" role="main" class="container" style="margin-top: 2rem; padding: 0 1.5rem;">
+
+        <!-- Login Card (Displayed when not authenticated) -->
+        <section id="loginCard" class="filter-card" style="max-width: 480px; margin: 3rem auto; padding: 2rem;">
+            <h2 style="margin-top: 0; margin-bottom: 0.5rem; text-align: center;">Portal Sign In</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem; text-align: center; margin-bottom: 1.5rem;">
+                Sign in to manage your house beds or network residences.
+            </p>
+            <form id="loginForm">
+                <div class="filter-group">
+                    <label for="loginEmail">Email Address</label>
+                    <input type="email" id="loginEmail" placeholder="manager@example.com" required style="width: 100%; padding: 0.6rem; margin-top: 0.2rem;">
+                </div>
+                <div class="filter-group" style="margin-top: 1rem;">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••" required style="width: 100%; padding: 0.6rem; margin-top: 0.2rem;">
+                </div>
+                <button type="submit" id="loginBtn" class="btn btn-primary full-width" style="margin-top: 1.5rem; width: 100%;">
+                    Log In
+                </button>
+            </form>
+        </section>
+
+        <!-- Auth Status Banner -->
+        <div id="authStatusBanner" class="filter-card" style="display: none; margin-bottom: 2rem; background: #0f172a; border: 1px solid #334155;">
+            <!-- Rendered dynamically by js/dashboard.js -->
+        </div>
+
+        <!-- 1. House Manager Update Section -->
+        <section id="managerUpdateSection" class="filter-card" style="display: none; margin-bottom: 2rem; background: #1e293b; padding: 1.5rem; border-radius: 8px;">
+            <h2 style="margin-top: 0;">House Manager Bed Update</h2>
+            <p id="managerHouseLabel" style="color: #38bdf8; font-weight: 600; font-size: 0.95rem; margin-bottom: 1.25rem;"></p>
+            
+            <form id="updateBedForm">
+                <div class="filter-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem;">
+                    <div class="filter-group">
+                        <label for="inputAvailable" style="color: #22c55e; font-weight: 700;">Available Beds</label>
+                        <input type="number" id="inputAvailable" min="0" required style="width: 100%; padding: 0.5rem; background: #0f172a; border: 1px solid #334155; color: #fff; font-size: 1rem; border-radius: 4px;">
+                    </div>
+                    <div class="filter-group">
+                        <label for="inputOccupied" style="color: #eab308; font-weight: 700;">Occupied Beds</label>
+                        <input type="number" id="inputOccupied" min="0" required style="width: 100%; padding: 0.5rem; background: #0f172a; border: 1px solid #334155; color: #fff; font-size: 1rem; border-radius: 4px;">
+                    </div>
+                    <div class="filter-group">
+                        <label for="inputReserved" style="color: #3b82f6; font-weight: 700;">Reserved Beds</label>
+                        <input type="number" id="inputReserved" min="0" required style="width: 100%; padding: 0.5rem; background: #0f172a; border: 1px solid #334155; color: #fff; font-size: 1rem; border-radius: 4px;">
+                    </div>
+                    <div class="filter-group">
+                        <label for="inputMaintenance" style="color: #ef4444; font-weight: 700;">Maintenance Beds</label>
+                        <input type="number" id="inputMaintenance" min="0" required style="width: 100%; padding: 0.5rem; background: #0f172a; border: 1px solid #334155; color: #fff; font-size: 1rem; border-radius: 4px;">
+                    </div>
+                </div>
+                <button type="submit" id="saveBedBtn" class="btn btn-success full-width" style="margin-top: 1.5rem; width: 100%; padding: 0.75rem; font-size: 1rem;">
+                    Update Bed Counts Live
+                </button>
+            </form>
+        </section>
+
+        <!-- 2. Organization Director Panel -->
+        <section id="directorPanel" class="filter-card" style="display: none; margin-bottom: 2rem; background: #1e293b; padding: 1.5rem; border-radius: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.5rem;">
+                <div>
+                    <h2 style="margin: 0;">Organization Director Dashboard</h2>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0.25rem 0 0 0;">
+                        Manage bed availability and assign managers across your network
+                    </p>
+                </div>
+                <span class="badge badge-available" style="padding: 0.4rem 0.8rem; background: #0284c7; color: #fff; border-radius: 12px; font-weight: 600;">Director Access</span>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid #334155; color: #94a3b8; font-size: 0.85rem; text-transform: uppercase;">
+                            <th style="padding: 0.75rem;">House Name</th>
+                            <th style="padding: 0.75rem;">County</th>
+                            <th style="padding: 0.75rem;">Edit Bed Counts (Avail / Occ / Res / Maint)</th>
+                            <th style="padding: 0.75rem;">Assign Manager</th>
+                        </tr>
+                    </thead>
+                    <tbody id="directorHouseTableBody">
+                        <!-- Rendered dynamically by js/dashboard.js -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <script type="module" src="js/dashboard.js"></script>
+</body>
+</html>

@@ -1,316 +1,22 @@
-import { 
-    supabase, 
-    loginManager, 
-    logoutManager, 
-    fetchAssignedHouse, 
-    fetchHousesForDirector,
-    assignHouseManager,
-    submitBedUpdate, 
-    fetchHouses, 
-    isWithin7Days 
-} from './supabaseClient.js';
-
-let currentSession = null;
-let currentManagerHouse = null;
+import { supabase, fetchHouses } from './supabaseClient.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    initApp();
+    initPublicApp();
 });
 
-async function initApp() {
-    setupEventListeners();
-    initAuthListener();
+async function initPublicApp() {
+    setupFilterListeners();
     await fetchAndRenderHouses();
-    await loadFeedback();
     subscribeToRealtimeUpdates();
 }
 
-function setupEventListeners() {
-    const loginForm = document.getElementById('loginForm');
-    const updateBedForm = document.getElementById('updateBedForm');
-    const openLoginBtn = document.getElementById('openLoginModalBtn');
-    const closeLoginBtn = document.getElementById('closeLoginBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const loginCard = document.getElementById('loginCard');
-
-    if (openLoginBtn && loginCard) {
-        openLoginBtn.addEventListener('click', () => {
-            loginCard.style.display = loginCard.style.display === 'none' || !loginCard.style.display ? 'block' : 'none';
-        });
-    }
-
-    if (closeLoginBtn && loginCard) {
-        closeLoginBtn.addEventListener('click', () => {
-            loginCard.style.display = 'none';
-        });
-    }
-
-    if (loginForm) {
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('loginEmail')?.value.trim();
-            const password = document.getElementById('loginPassword')?.value;
-            const submitBtn = document.getElementById('loginBtn');
-
-            if (!email || !password) return alert('Please enter both email and password.');
-
-            try {
-                if (submitBtn) {
-                    submitBtn.textContent = 'Logging in...';
-                    submitBtn.disabled = true;
-                }
-                await loginManager(email, password);
-                loginForm.reset();
-                if (loginCard) loginCard.style.display = 'none';
-            } catch (err) {
-                alert(`Login failed: ${err.message}`);
-            } finally {
-                if (submitBtn) {
-                    submitBtn.textContent = 'Log In';
-                    submitBtn.disabled = false;
-                }
-            }
-        });
-    }
-
-    if (updateBedForm) {
-        updateBedForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            if (!currentManagerHouse) {
-                alert('No house assigned to your account.');
-                return;
-            }
-
-            const bedMetrics = {
-                available: document.getElementById('inputAvailable').value,
-                occupied: document.getElementById('inputOccupied').value,
-                reserved: document.getElementById('inputReserved').value,
-                maintenance: document.getElementById('inputMaintenance').value
-            };
-
-            const saveBtn = document.getElementById('saveBedBtn');
-
-            try {
-                if (saveBtn) {
-                    saveBtn.textContent = 'Saving...';
-                    saveBtn.disabled = true;
-                }
-
-                await submitBedUpdate(currentManagerHouse.id, bedMetrics);
-                alert('Bed counts updated live in Supabase cloud!');
-                await fetchAndRenderHouses();
-            } catch (err) {
-                alert('Permission denied or network error. Could not update bed counts.');
-            } finally {
-                if (saveBtn) {
-                    saveBtn.textContent = 'Update Bed Counts Live';
-                    saveBtn.disabled = false;
-                }
-            }
-        });
-    }
-
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', async () => {
-            try {
-                await logoutManager();
-            } catch (err) {
-                alert('Logout failed: ' + err.message);
-            }
-        });
-    }
-
+function setupFilterListeners() {
     document.getElementById('searchInput')?.addEventListener('input', debounce(fetchAndRenderHouses, 300));
     document.getElementById('regionFilter')?.addEventListener('change', fetchAndRenderHouses);
     document.getElementById('countyFilter')?.addEventListener('change', fetchAndRenderHouses);
     document.getElementById('genderFilter')?.addEventListener('change', fetchAndRenderHouses);
     document.getElementById('supportFilter')?.addEventListener('change', fetchAndRenderHouses);
     document.getElementById('availableOnlyToggle')?.addEventListener('change', fetchAndRenderHouses);
-
-    document.getElementById('feedbackForm')?.addEventListener('submit', handleFeedbackSubmit);
-}
-
-function initAuthListener() {
-    supabase.auth.onAuthStateChange(async (event, session) => {
-        currentSession = session;
-        updateUIForAuth(!!session);
-
-        const authStatusBanner = document.getElementById('authStatusBanner');
-        const managerUpdateSection = document.getElementById('managerUpdateSection');
-        const directorPanel = document.getElementById('directorPanel');
-
-        if (session) {
-            try {
-                currentManagerHouse = await fetchAssignedHouse(session.user.id);
-
-                if (currentManagerHouse && managerUpdateSection) {
-                    managerUpdateSection.style.display = 'block';
-                    document.getElementById('managerHouseLabel').textContent = 
-                        `Editing residence: ${currentManagerHouse.house_name} (${currentManagerHouse.county} Co.)`;
-
-                    document.getElementById('inputAvailable').value = currentManagerHouse.available_beds || 0;
-                    document.getElementById('inputOccupied').value = currentManagerHouse.occupied_beds || 0;
-                    document.getElementById('inputReserved').value = currentManagerHouse.reserved_beds || 0;
-                    document.getElementById('inputMaintenance').value = currentManagerHouse.maintenance_beds || 0;
-                } else if (managerUpdateSection) {
-                    managerUpdateSection.style.display = 'none';
-                }
-
-                if (authStatusBanner) {
-                    authStatusBanner.innerHTML = `
-                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
-                            <div>
-                                <strong>Logged in as:</strong> ${session.user.email}
-                                <div style="font-size: 0.85rem; color: var(--text-muted);">
-                                    Assigned House: <strong>${currentManagerHouse ? currentManagerHouse.house_name : 'None (Read-Only / Admin)'}</strong>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }
-            } catch (err) {
-                console.error('Error fetching manager house:', err);
-            }
-
-            try {
-                const directorHouses = await fetchHousesForDirector(session.user.id);
-                if (directorHouses && directorHouses.length > 0 && directorPanel) {
-                    directorPanel.style.display = 'block';
-                    renderDirectorTable(directorHouses);
-                } else if (directorPanel) {
-                    directorPanel.style.display = 'none';
-                }
-            } catch (err) {
-                console.error('Error loading director access:', err);
-            }
-
-        } else {
-            currentManagerHouse = null;
-            if (managerUpdateSection) managerUpdateSection.style.display = 'none';
-            if (directorPanel) directorPanel.style.display = 'none';
-
-            if (authStatusBanner) {
-                authStatusBanner.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span>Public View (Read Only)</span>
-                    </div>
-                `;
-            }
-        }
-    });
-}
-
-function renderDirectorTable(houses) {
-    const tableBody = document.getElementById('directorHouseTableBody');
-    if (!tableBody) return;
-
-    tableBody.innerHTML = '';
-
-    houses.forEach(house => {
-        const row = document.createElement('tr');
-        row.style.borderBottom = '1px solid var(--card-border)';
-        row.innerHTML = `
-            <td style="padding: 0.75rem; font-weight: 600; vertical-align: middle;">
-                ${escapeHtml(house.house_name)}
-                <div style="font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(house.city || '')}</div>
-            </td>
-            <td style="padding: 0.75rem; color: var(--text-muted); vertical-align: middle;">
-                ${escapeHtml(house.county)}
-            </td>
-            
-            <!-- Director Bed Count Inputs -->
-            <td style="padding: 0.75rem; vertical-align: middle;">
-                <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
-                    <label style="font-size: 0.7rem; color: #22c55e;">Avail:
-                        <input type="number" min="0" class="bed-avail-input" data-house-id="${house.id}" value="${house.available_beds || 0}" style="width: 48px; padding: 0.2rem; background: #0f172a; border: 1px solid #334155; color: #fff; text-align: center; border-radius: 4px;">
-                    </label>
-                    <label style="font-size: 0.7rem; color: #eab308;">Occ:
-                        <input type="number" min="0" class="bed-occ-input" data-house-id="${house.id}" value="${house.occupied_beds || 0}" style="width: 48px; padding: 0.2rem; background: #0f172a; border: 1px solid #334155; color: #fff; text-align: center; border-radius: 4px;">
-                    </label>
-                    <label style="font-size: 0.7rem; color: #3b82f6;">Res:
-                        <input type="number" min="0" class="bed-res-input" data-house-id="${house.id}" value="${house.reserved_beds || 0}" style="width: 48px; padding: 0.2rem; background: #0f172a; border: 1px solid #334155; color: #fff; text-align: center; border-radius: 4px;">
-                    </label>
-                    <label style="font-size: 0.7rem; color: #ef4444;">Maint:
-                        <input type="number" min="0" class="bed-maint-input" data-house-id="${house.id}" value="${house.maintenance_beds || 0}" style="width: 48px; padding: 0.2rem; background: #0f172a; border: 1px solid #334155; color: #fff; text-align: center; border-radius: 4px;">
-                    </label>
-                    <button class="btn btn-success save-beds-btn" data-house-id="${house.id}" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
-                        Save Beds
-                    </button>
-                </div>
-            </td>
-
-            <!-- Manager Assignment Input -->
-            <td style="padding: 0.75rem; vertical-align: middle;">
-                <div style="display: flex; gap: 0.3rem; align-items: center;">
-                    <input type="text" 
-                           class="manager-input" 
-                           data-house-id="${house.id}" 
-                           value="${house.manager_id || ''}" 
-                           placeholder="Paste Manager UID"
-                           style="width: 170px; font-size: 0.75rem; padding: 0.3rem; background: #0f172a; border: 1px solid var(--card-border); color: #fff; border-radius: 4px;">
-                    <button class="btn btn-outline save-manager-btn" data-house-id="${house.id}" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
-                        Assign
-                    </button>
-                </div>
-            </td>
-        `;
-        tableBody.appendChild(row);
-    });
-
-    // Event Listener for Director Bed Updates
-    document.querySelectorAll('.save-beds-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            const houseId = e.target.dataset.houseId;
-            const available = document.querySelector(`.bed-avail-input[data-house-id="${houseId}"]`)?.value || 0;
-            const occupied = document.querySelector(`.bed-occ-input[data-house-id="${houseId}"]`)?.value || 0;
-            const reserved = document.querySelector(`.bed-res-input[data-house-id="${houseId}"]`)?.value || 0;
-            const maintenance = document.querySelector(`.bed-maint-input[data-house-id="${houseId}"]`)?.value || 0;
-
-            try {
-                e.target.textContent = 'Saving...';
-                e.target.disabled = true;
-
-                await submitBedUpdate(houseId, { available, occupied, reserved, maintenance });
-                alert('Bed counts updated live in Supabase!');
-                await fetchAndRenderHouses();
-            } catch (err) {
-                alert('Failed to update beds: ' + err.message);
-            } finally {
-                e.target.textContent = 'Save Beds';
-                e.target.disabled = false;
-            }
-        });
-    });
-
-    // Event Listener for Manager Assignments
-    document.querySelectorAll('.save-manager-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            const houseId = e.target.dataset.houseId;
-            const inputElem = document.querySelector(`.manager-input[data-house-id="${houseId}"]`);
-            const newManagerId = inputElem ? inputElem.value.trim() : '';
-
-            try {
-                e.target.textContent = 'Saving...';
-                e.target.disabled = true;
-                await assignHouseManager(houseId, newManagerId);
-                alert('House manager assignment updated!');
-            } catch (err) {
-                alert('Failed to update manager assignment.');
-            } finally {
-                e.target.textContent = 'Assign';
-                e.target.disabled = false;
-            }
-        });
-    });
-}
-
-function updateUIForAuth(isLoggedIn) {
-    const loginBtn = document.getElementById('openLoginModalBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
-
-    if (loginBtn) loginBtn.style.display = isLoggedIn ? 'none' : 'block';
-    if (logoutBtn) logoutBtn.style.display = isLoggedIn ? 'block' : 'none';
 }
 
 async function fetchAndRenderHouses() {
@@ -322,11 +28,15 @@ async function fetchAndRenderHouses() {
     const search = document.getElementById('searchInput')?.value.trim();
     const region = document.getElementById('regionFilter')?.value;
     const county = document.getElementById('countyFilter')?.value;
+    const gender = document.getElementById('genderFilter')?.value;
+    const supportLevel = document.getElementById('supportFilter')?.value;
+    const availableOnly = document.getElementById('availableOnlyToggle')?.checked;
 
     let query = supabase.from('houses').select('*');
 
     if (region) query = query.eq('region', region);
     if (county) query = query.eq('county', county);
+    if (supportLevel) query = query.eq('level_of_support', supportLevel);
 
     const { data: houses, error } = await query;
 
@@ -337,6 +47,17 @@ async function fetchAndRenderHouses() {
 
     let filtered = houses || [];
 
+    if (gender) {
+        filtered = filtered.filter(h => 
+            (h.population && h.population.toLowerCase().includes(gender.toLowerCase())) ||
+            (h.gender && h.gender.toLowerCase().includes(gender.toLowerCase()))
+        );
+    }
+
+    if (availableOnly) {
+        filtered = filtered.filter(h => (h.available_beds || 0) > 0);
+    }
+
     if (search) {
         const term = search.toLowerCase();
         filtered = filtered.filter(h => 
@@ -346,7 +67,47 @@ async function fetchAndRenderHouses() {
         );
     }
 
+    updateKPISummary(houses || []);
     renderHouseCards(filtered);
+}
+
+function updateKPISummary(allHouses) {
+    let totalAvail = 0;
+    let totalOcc = 0;
+    let totalRes = 0;
+    let totalMaint = 0;
+
+    allHouses.forEach(h => {
+        totalAvail += Number(h.available_beds) || 0;
+        totalOcc += Number(h.occupied_beds) || 0;
+        totalRes += Number(h.reserved_beds) || 0;
+        totalMaint += Number(h.maintenance_beds) || 0;
+    });
+
+    const grandTotal = totalAvail + totalOcc + totalRes + totalMaint;
+    const occPct = grandTotal > 0 ? Math.round((totalOcc / grandTotal) * 100) : 0;
+
+    const elAvail = document.getElementById('kpiAvailable');
+    const elOcc = document.getElementById('kpiOccupied');
+    const elRes = document.getElementById('kpiReserved');
+    const elMaint = document.getElementById('kpiMaintenance');
+    const elPct = document.getElementById('totalOccupancyPct');
+
+    if (elAvail) elAvail.textContent = totalAvail;
+    if (elOcc) elOcc.textContent = totalOcc;
+    if (elRes) elRes.textContent = totalRes;
+    if (elMaint) elMaint.textContent = totalMaint;
+    if (elPct) elPct.textContent = `${occPct}%`;
+
+    const subAvail = document.getElementById('kpiAvailableSub');
+    const subOcc = document.getElementById('kpiOccupiedSub');
+    const subRes = document.getElementById('kpiReservedSub');
+    const subMaint = document.getElementById('kpiMaintenanceSub');
+
+    if (subAvail) subAvail.textContent = `of ${grandTotal} total beds`;
+    if (subOcc) subOcc.textContent = `of ${grandTotal} total beds`;
+    if (subRes) subRes.textContent = `of ${grandTotal} total beds`;
+    if (subMaint) subMaint.textContent = `of ${grandTotal} total beds`;
 }
 
 function renderHouseCards(houses) {
@@ -370,7 +131,6 @@ function renderHouseCards(houses) {
         const moveInDisplay = house.move_in_cost ? `$${Number(house.move_in_cost).toLocaleString()}` : 'Contact for Details';
         const insuranceDisplay = house.insurance_accepted || 'Self-Pay / Cash';
 
-        // Format Amenities tag array
         let amenitiesList = [];
         if (Array.isArray(house.amenities)) {
             amenitiesList = house.amenities;
@@ -382,15 +142,7 @@ function renderHouseCards(houses) {
             ? amenitiesList.map(item => `<span style="background: #0f172a; border: 1px solid #334155; color: #cbd5e1; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; display: inline-block; margin: 0.15rem;">✓ ${escapeHtml(item)}</span>`).join(' ')
             : '<span style="color: #64748b; font-size: 0.85rem;">None listed</span>';
 
-        // Social Media Links
-        const socials = [];
-        if (house.social_facebook) socials.push(`<a href="${escapeHtml(house.social_facebook)}" target="_blank" style="color: #38bdf8;">Facebook</a>`);
-        if (house.social_linkedin) socials.push(`<a href="${escapeHtml(house.social_linkedin)}" target="_blank" style="color: #38bdf8;">LinkedIn</a>`);
-        if (house.social_x) socials.push(`<a href="${escapeHtml(house.social_x)}" target="_blank" style="color: #38bdf8;">X</a>`);
-        if (house.social_instagram) socials.push(`<a href="${escapeHtml(house.social_instagram)}" target="_blank" style="color: #38bdf8;">Instagram</a>`);
-
         card.innerHTML = `
-            <!-- Top Header -->
             <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
                 <div>
                     <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #38bdf8; font-weight: 700; margin-bottom: 0.2rem;">
@@ -404,7 +156,6 @@ function renderHouseCards(houses) {
                     </p>
                 </div>
 
-                <!-- Bed Counter Box -->
                 <div style="background: #0f172a; padding: 0.5rem 1rem; border-radius: 8px; text-align: center; border: 1px solid #334155; min-width: 100px;">
                     <span style="font-size: 1.4rem; font-weight: bold; color: ${house.available_beds > 0 ? '#22c55e' : '#94a3b8'};">
                         ${house.available_beds || 0}
@@ -413,7 +164,6 @@ function renderHouseCards(houses) {
                 </div>
             </div>
 
-            <!-- Certification & Type Badges -->
             <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; align-items: center;">
                 <span style="background: #0284c7; color: #fff; padding: 0.25rem 0.65rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600;">
                     Serving: ${escapeHtml(house.population || house.gender || 'N/A')}
@@ -428,14 +178,12 @@ function renderHouseCards(houses) {
                 </span>
             </div>
 
-            <!-- Description -->
             ${house.description ? `
                 <p style="margin: 1rem 0; color: #cbd5e1; font-size: 0.9rem; line-height: 1.5; background: #0f172a; padding: 0.75rem 1rem; border-radius: 6px; border-left: 3px solid #38bdf8;">
                     ${escapeHtml(house.description)}
                 </p>
             ` : ''}
 
-            <!-- Financials Grid -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; margin-top: 1rem; font-size: 0.85rem;">
                 <div style="background: #0f172a; padding: 0.6rem 0.8rem; border-radius: 6px; border: 1px solid #1e293b;">
                     <div style="color: #94a3b8; font-size: 0.75rem;">Move-In Fee</div>
@@ -453,7 +201,6 @@ function renderHouseCards(houses) {
                 </div>
             </div>
 
-            <!-- Contact & Quick Links Bar -->
             <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #334155; font-size: 0.85rem; align-items: center; justify-content: space-between;">
                 <div style="color: #cbd5e1; display: flex; flex-wrap: wrap; gap: 1rem;">
                     ${house.contact_name ? `<span>👤 <strong>Contact:</strong> ${escapeHtml(house.contact_name)}</span>` : ''}
@@ -467,96 +214,21 @@ function renderHouseCards(houses) {
                 </div>
             </div>
 
-            <!-- Collapsible Section for Detailed Services & Amenities -->
             <details style="margin-top: 1rem; background: #0f172a; padding: 0.75rem; border-radius: 6px; border: 1px solid #1e293b;">
                 <summary style="cursor: pointer; font-weight: 600; color: #38bdf8; font-size: 0.85rem;">
                     View Amenities, Policies & Extra Details ▼
                 </summary>
                 
                 <div style="margin-top: 0.75rem; font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.75rem;">
-                    ${house.defining_characteristics ? `
-                        <div>
-                            <strong style="color: #94a3b8; display: block; margin-bottom: 0.2rem;">Defining Characteristics:</strong>
-                            <div>${escapeHtml(house.defining_characteristics)}</div>
-                        </div>
-                    ` : ''}
-
                     <div>
                         <strong style="color: #94a3b8; display: block; margin-bottom: 0.4rem;">Amenities:</strong>
                         <div>${amenitiesHTML}</div>
                     </div>
-
-                    ${house.languages ? `
-                        <div>
-                            <strong style="color: #94a3b8; display: block; margin-bottom: 0.2rem;">Languages Offered:</strong>
-                            <div>${escapeHtml(house.languages)}</div>
-                        </div>
-                    ` : ''}
-
-                    ${house.policies ? `
-                        <div>
-                            <strong style="color: #94a3b8; display: block; margin-bottom: 0.2rem;">House Policies:</strong>
-                            <div>${escapeHtml(house.policies)}</div>
-                        </div>
-                    ` : ''}
-
-                    ${house.services_available ? `
-                        <div>
-                            <strong style="color: #94a3b8; display: block; margin-bottom: 0.2rem;">Services Available:</strong>
-                            <div>${escapeHtml(house.services_available)}</div>
-                        </div>
-                    ` : ''}
-
-                    ${house.programs ? `
-                        <div>
-                            <strong style="color: #94a3b8; display: block; margin-bottom: 0.2rem;">Programs:</strong>
-                            <div>${escapeHtml(house.programs)}</div>
-                        </div>
-                    ` : ''}
-
-                    ${socials.length > 0 ? `
-                        <div>
-                            <strong style="color: #94a3b8; display: block; margin-bottom: 0.2rem;">Social Media:</strong>
-                            <div>${socials.join(' • ')}</div>
-                        </div>
-                    ` : ''}
                 </div>
             </details>
         `;
         grid.appendChild(card);
     });
-}
-
-async function handleFeedbackSubmit(e) {
-    e.preventDefault();
-    const category = document.getElementById('feedbackCategory')?.value;
-    const message = document.getElementById('feedbackMessage')?.value.trim();
-
-    const { error } = await supabase.from('feedback').insert([{ category, message }]);
-
-    if (error) {
-        alert('Error submitting feedback: ' + error.message);
-    } else {
-        alert('Thank you for contributing to Apertus.');
-        document.getElementById('feedbackForm')?.reset();
-        await loadFeedback();
-    }
-}
-
-async function loadFeedback() {
-    const list = document.getElementById('feedbackList');
-    if (!list) return;
-
-    const { data } = await supabase.from('feedback').select('*').order('created_at', { ascending: false }).limit(5);
-
-    if (data) {
-        list.innerHTML = data.map(item => `
-            <div class="feedback-card">
-                <strong>${escapeHtml(item.category)}</strong>
-                <p>${escapeHtml(item.message)}</p>
-            </div>
-        `).join('');
-    }
 }
 
 function subscribeToRealtimeUpdates() {
