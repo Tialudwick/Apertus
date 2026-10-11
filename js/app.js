@@ -1,4 +1,4 @@
-import { supabase, fetchHouses } from './supabaseClient.js';
+import { supabase } from './supabaseClient.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     initPublicApp();
@@ -25,50 +25,62 @@ async function fetchAndRenderHouses() {
 
     grid.innerHTML = '<div class="loading-spinner">Loading sober houses...</div>';
 
-    const search = document.getElementById('searchInput')?.value.trim();
-    const region = document.getElementById('regionFilter')?.value;
-    const county = document.getElementById('countyFilter')?.value;
-    const gender = document.getElementById('genderFilter')?.value;
-    const supportLevel = document.getElementById('supportFilter')?.value;
-    const availableOnly = document.getElementById('availableOnlyToggle')?.checked;
-
-    let query = supabase.from('houses').select('*');
-
-    if (region) query = query.eq('region', region);
-    if (county) query = query.eq('county', county);
-    if (supportLevel) query = query.eq('level_of_support', supportLevel);
-
-    const { data: houses, error } = await query;
-
-    if (error) {
-        grid.innerHTML = `<p class="error-msg">Error loading directory: ${error.message}</p>`;
+    if (!supabase) {
+        grid.innerHTML = '<p class="error-msg" style="color: #ef4444; padding: 1rem;">Error: Supabase client is not initialized. Ensure supabaseClient.js is inside the js/ directory.</p>';
         return;
     }
 
-    let filtered = houses || [];
+    try {
+        const search = document.getElementById('searchInput')?.value.trim();
+        const region = document.getElementById('regionFilter')?.value;
+        const county = document.getElementById('countyFilter')?.value;
+        const gender = document.getElementById('genderFilter')?.value;
+        const supportLevel = document.getElementById('supportFilter')?.value;
+        const availableOnly = document.getElementById('availableOnlyToggle')?.checked;
 
-    if (gender) {
-        filtered = filtered.filter(h => 
-            (h.population && h.population.toLowerCase().includes(gender.toLowerCase())) ||
-            (h.gender && h.gender.toLowerCase().includes(gender.toLowerCase()))
-        );
+        let query = supabase.from('houses').select('*');
+
+        if (region) query = query.eq('region', region);
+        if (county) query = query.eq('county', county);
+        if (supportLevel) query = query.eq('level_of_support', supportLevel);
+
+        const { data: houses, error } = await query;
+
+        if (error) {
+            console.error('Supabase fetch error:', error);
+            grid.innerHTML = `<p class="error-msg" style="color: #ef4444; padding: 1rem;">Error loading directory: ${escapeHtml(error.message)}</p>`;
+            return;
+        }
+
+        let filtered = houses || [];
+
+        if (gender) {
+            filtered = filtered.filter(h => 
+                (h.population && h.population.toLowerCase().includes(gender.toLowerCase())) ||
+                (h.gender && h.gender.toLowerCase().includes(gender.toLowerCase()))
+            );
+        }
+
+        if (availableOnly) {
+            filtered = filtered.filter(h => (Number(h.available_beds) || 0) > 0);
+        }
+
+        if (search) {
+            const term = search.toLowerCase();
+            filtered = filtered.filter(h => 
+                (h.house_name && h.house_name.toLowerCase().includes(term)) || 
+                (h.city && h.city.toLowerCase().includes(term)) ||
+                (h.parent_company && h.parent_company.toLowerCase().includes(term))
+            );
+        }
+
+        updateKPISummary(houses || []);
+        renderHouseCards(filtered);
+
+    } catch (err) {
+        console.error('Unexpected error in fetchAndRenderHouses:', err);
+        grid.innerHTML = `<p class="error-msg" style="color: #ef4444; padding: 1rem;">Unexpected error: ${escapeHtml(err.message)}</p>`;
     }
-
-    if (availableOnly) {
-        filtered = filtered.filter(h => (h.available_beds || 0) > 0);
-    }
-
-    if (search) {
-        const term = search.toLowerCase();
-        filtered = filtered.filter(h => 
-            (h.house_name && h.house_name.toLowerCase().includes(term)) || 
-            (h.city && h.city.toLowerCase().includes(term)) ||
-            (h.parent_company && h.parent_company.toLowerCase().includes(term))
-        );
-    }
-
-    updateKPISummary(houses || []);
-    renderHouseCards(filtered);
 }
 
 function updateKPISummary(allHouses) {
@@ -117,7 +129,7 @@ function renderHouseCards(houses) {
     grid.innerHTML = '';
 
     if (!houses || houses.length === 0) {
-        grid.innerHTML = '<div class="no-results">No recovery residences found matching your criteria.</div>';
+        grid.innerHTML = '<div class="no-results" style="color: #94a3b8; padding: 1rem;">No recovery residences found matching your criteria.</div>';
         return;
     }
 
@@ -141,8 +153,8 @@ function renderHouseCards(houses) {
             ? amenitiesList.map(item => `<span class="amenity-tag">✓ ${escapeHtml(item)}</span>`).join(' ')
             : '<span class="text-muted">None listed</span>';
 
-        const availCount = house.available_beds || 0;
-        const totalHouseCapacity = (availCount + (house.occupied_beds || 0) + (house.reserved_beds || 0) + (house.maintenance_beds || 0)) || 10;
+        const availCount = Number(house.available_beds) || 0;
+        const totalHouseCapacity = (availCount + (Number(house.occupied_beds) || 0) + (Number(house.reserved_beds) || 0) + (Number(house.maintenance_beds) || 0)) || 10;
 
         card.innerHTML = `
             <div class="card-top">
@@ -206,57 +218,6 @@ function renderHouseCards(houses) {
 }
 
 function getBedGaugeHTML(openBeds, totalBeds) {
-    const totalArcLength = 126;
-    const ratio = totalBeds > 0 ? Math.min(openBeds / totalBeds, 1) : 0;
-    const dashOffset = totalArcLength * (1 - ratio);
-    const gaugeColor = openBeds > 0 ? '#10b981' : '#64748b';
-
-    return `
-        <div class="bed-gauge-container">
-            <svg class="bed-gauge-svg" viewBox="0 0 100 60">
-                <path class="gauge-bg" d="M 10,50 A 40,40 0 0,1 90,50" />
-                <path class="gauge-fill" 
-                      d="M 10,50 A 40,40 0 0,1 90,50" 
-                      style="stroke-dashoffset: ${dashOffset}; stroke: ${gaugeColor};" />
-                <g class="bed-icon-group" transform="translate(37, 28)">
-                    <rect x="0" y="2" width="3" height="15" rx="1" />
-                    <rect x="4" y="9" width="21" height="5" rx="1" />
-                    <rect x="4" y="6" width="6" height="4" rx="1" class="pillow" />
-                    <rect x="0" y="14" width="25" height="2" rx="1" />
-                    <rect x="23" y="14" width="2" height="4" rx="1" />
-                </g>
-            </svg>
-            <div class="gauge-text">
-                <span class="count" style="color: ${gaugeColor}">${openBeds}</span>
-                <span class="label">OPEN BEDS</span>
-            </div>
-        </div>
-    `;
-}
-
-function subscribeToRealtimeUpdates() {
-    supabase.channel('public-bed-updates')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'houses' }, () => {
-            fetchAndRenderHouses();
-        })
-        .subscribe();
-}
-
-function debounce(func, wait) {
-    let timeout;
-    return (...args) => {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(this, args), wait);
-    };
-}
-
-function escapeHtml(str) {
-    return String(str || '').replace(/[&<>"']/g, m => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
-    }[m]));
-}
-
-function getBedGaugeHTML(openBeds, totalBeds) {
     const totalArcLength = 110;
     const ratio = totalBeds > 0 ? Math.min(openBeds / totalBeds, 1) : 0;
     const dashOffset = totalArcLength * (1 - ratio);
@@ -283,4 +244,27 @@ function getBedGaugeHTML(openBeds, totalBeds) {
             </div>
         </div>
     `;
+}
+
+function subscribeToRealtimeUpdates() {
+    if (!supabase) return;
+    supabase.channel('public-bed-updates')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'houses' }, () => {
+            fetchAndRenderHouses();
+        })
+        .subscribe();
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+}
+
+function escapeHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+    }[m]));
 }
