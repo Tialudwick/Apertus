@@ -117,15 +117,14 @@ function renderHouseCards(houses) {
     grid.innerHTML = '';
 
     if (!houses || houses.length === 0) {
-        grid.innerHTML = '<div class="no-results" style="padding: 1rem; color: var(--text-muted);">No recovery residences found matching your criteria.</div>';
+        grid.innerHTML = '<div class="no-results">No recovery residences found matching your criteria.</div>';
         return;
     }
 
     houses.forEach(house => {
         const card = document.createElement('article');
         card.className = 'house-card';
-        card.style.cssText = 'background: #1e293b; border: 1px solid var(--card-border, #334155); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.25rem; color: #e2e8f0;';
-        
+
         const parentOrg = house.parent_company || house.company_name || 'Independent Residence';
         const rentDisplay = house.rent_amount ? `$${Number(house.rent_amount).toLocaleString()}/mo` : 'Contact for Rent';
         const moveInDisplay = house.move_in_cost ? `$${Number(house.move_in_cost).toLocaleString()}` : 'Contact for Details';
@@ -139,91 +138,68 @@ function renderHouseCards(houses) {
         }
 
         const amenitiesHTML = amenitiesList.length > 0 
-            ? amenitiesList.map(item => `<span style="background: #0f172a; border: 1px solid #334155; color: #cbd5e1; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; display: inline-block; margin: 0.15rem;">✓ ${escapeHtml(item)}</span>`).join(' ')
-            : '<span style="color: #64748b; font-size: 0.85rem;">None listed</span>';
+            ? amenitiesList.map(item => `<span class="amenity-tag">✓ ${escapeHtml(item)}</span>`).join(' ')
+            : '<span class="text-muted">None listed</span>';
+
+        const availCount = house.available_beds || 0;
 
         card.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
-                <div>
-                    <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #38bdf8; font-weight: 700; margin-bottom: 0.2rem;">
-                        Organization: ${escapeHtml(parentOrg)}
-                    </div>
-                    <h3 style="margin: 0; color: #fff; font-size: 1.35rem; font-weight: 800;">
-                        ${escapeHtml(house.house_name)}
-                    </h3>
-                    <p style="margin: 0.3rem 0 0 0; color: #94a3b8; font-size: 0.9rem;">
-                        ${escapeHtml(house.city || 'N/A')}, ${escapeHtml(house.county || '')} County
-                    </p>
+            <div class="card-top">
+                <div class="card-title-group">
+                    <span class="org-sub-label">ORGANIZATION: ${escapeHtml(parentOrg)}</span>
+                    <h3 class="house-name">${escapeHtml(house.house_name)}</h3>
+                    <p class="house-location">${escapeHtml(house.city || 'N/A')}, ${escapeHtml(house.county || '')} County</p>
                 </div>
 
-                <div style="background: #0f172a; padding: 0.5rem 1rem; border-radius: 8px; text-align: center; border: 1px solid #334155; min-width: 100px;">
-                    <span style="font-size: 1.4rem; font-weight: bold; color: ${house.available_beds > 0 ? '#22c55e' : '#94a3b8'};">
-                        ${house.available_beds || 0}
-                    </span>
-                    <span style="font-size: 0.7rem; color: #94a3b8; display: block; text-transform: uppercase; font-weight: 600;">Open Beds</span>
+                <div class="open-beds-box ${availCount > 0 ? 'has-openings' : 'no-openings'}">
+                    <span class="open-count">${availCount}</span>
+                    <span class="open-label">OPEN BEDS</span>
                 </div>
             </div>
 
-            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; align-items: center;">
-                <span style="background: #0284c7; color: #fff; padding: 0.25rem 0.65rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600;">
-                    Serving: ${escapeHtml(house.population || house.gender || 'N/A')}
-                </span>
-
-                <span style="background: #334155; color: #38bdf8; padding: 0.25rem 0.65rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600;">
-                    NARR Level ${house.level_of_support || 2} ${house.narr_type ? `(${escapeHtml(house.narr_type)})` : ''}
-                </span>
-
-                <span style="background: ${house.allows_moud !== false ? '#166534' : '#7f1d1d'}; color: #fff; padding: 0.25rem 0.65rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600;">
+            <div class="card-tags-row">
+                <span class="pill-tag tag-blue">Serving: ${escapeHtml(house.population || house.gender || 'N/A')}</span>
+                <span class="pill-tag tag-dark">NARR Level ${house.level_of_support || 2} ${house.narr_type ? `(${escapeHtml(house.narr_type)})` : ''}</span>
+                <span class="pill-tag ${house.allows_moud !== false ? 'tag-green' : 'tag-red'}">
                     ${house.allows_moud !== false ? '✓ Allows MOUD' : '✕ No MOUD'}
                 </span>
             </div>
 
-            ${house.description ? `
-                <p style="margin: 1rem 0; color: #cbd5e1; font-size: 0.9rem; line-height: 1.5; background: #0f172a; padding: 0.75rem 1rem; border-radius: 6px; border-left: 3px solid #38bdf8;">
-                    ${escapeHtml(house.description)}
-                </p>
-            ` : ''}
+            ${house.description ? `<p class="house-description">${escapeHtml(house.description)}</p>` : ''}
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; margin-top: 1rem; font-size: 0.85rem;">
-                <div style="background: #0f172a; padding: 0.6rem 0.8rem; border-radius: 6px; border: 1px solid #1e293b;">
-                    <div style="color: #94a3b8; font-size: 0.75rem;">Move-In Fee</div>
-                    <div style="color: #f8fafc; font-weight: 700; margin-top: 0.1rem; font-size: 0.95rem;">${moveInDisplay}</div>
+            <div class="pricing-grid">
+                <div class="price-box">
+                    <span class="price-label">Move-In Fee</span>
+                    <span class="price-val">${moveInDisplay}</span>
                 </div>
-
-                <div style="background: #0f172a; padding: 0.6rem 0.8rem; border-radius: 6px; border: 1px solid #1e293b;">
-                    <div style="color: #94a3b8; font-size: 0.75rem;">Monthly Rent</div>
-                    <div style="color: #f8fafc; font-weight: 700; margin-top: 0.1rem; font-size: 0.95rem;">${rentDisplay}</div>
+                <div class="price-box">
+                    <span class="price-label">Monthly Rent</span>
+                    <span class="price-val">${rentDisplay}</span>
                 </div>
-
-                <div style="background: #0f172a; padding: 0.6rem 0.8rem; border-radius: 6px; border: 1px solid #1e293b; grid-column: span 1 / -1;">
-                    <div style="color: #94a3b8; font-size: 0.75rem;">Insurance / Payment Accepted</div>
-                    <div style="color: #38bdf8; font-weight: 600; margin-top: 0.1rem;">${escapeHtml(insuranceDisplay)}</div>
+                <div class="price-box full-width-box">
+                    <span class="price-label">Insurance / Payment Accepted</span>
+                    <span class="price-val text-cyan">${escapeHtml(insuranceDisplay)}</span>
                 </div>
             </div>
 
-            <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #334155; font-size: 0.85rem; align-items: center; justify-content: space-between;">
-                <div style="color: #cbd5e1; display: flex; flex-wrap: wrap; gap: 1rem;">
+            <div class="contact-footer">
+                <div class="contact-info">
                     ${house.contact_name ? `<span>👤 <strong>Contact:</strong> ${escapeHtml(house.contact_name)}</span>` : ''}
-                    ${house.phone ? `<span>📞 <a href="tel:${escapeHtml(house.phone)}" style="color: #38bdf8; text-decoration: none;">${escapeHtml(house.phone)}</a></span>` : ''}
-                    ${house.email ? `<span>✉️ <a href="mailto:${escapeHtml(house.email)}" style="color: #38bdf8; text-decoration: none;">${escapeHtml(house.email)}</a></span>` : ''}
+                    ${house.phone ? `<span>📞 <a href="tel:${escapeHtml(house.phone)}">${escapeHtml(house.phone)}</a></span>` : ''}
+                    ${house.email ? `<span>✉️ <a href="mailto:${escapeHtml(house.email)}">${escapeHtml(house.email)}</a></span>` : ''}
                 </div>
 
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    ${house.website ? `<a href="${escapeHtml(house.website)}" target="_blank" style="background: #334155; color: #fff; padding: 0.4rem 0.8rem; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 0.8rem;">🌐 Website</a>` : ''}
-                    ${house.application_link ? `<a href="${escapeHtml(house.application_link)}" target="_blank" style="background: #0284c7; color: #fff; padding: 0.4rem 0.8rem; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 0.8rem;">📝 Apply Now</a>` : ''}
+                <div class="action-links">
+                    ${house.website ? `<a href="${escapeHtml(house.website)}" target="_blank" class="btn-sm btn-dark">🌐 Website</a>` : ''}
+                    ${house.application_link ? `<a href="${escapeHtml(house.application_link)}" target="_blank" class="btn-sm btn-blue">📝 Apply Now</a>` : ''}
                 </div>
             </div>
 
-            <details style="margin-top: 1rem; background: #0f172a; padding: 0.75rem; border-radius: 6px; border: 1px solid #1e293b;">
-                <summary style="cursor: pointer; font-weight: 600; color: #38bdf8; font-size: 0.85rem;">
-                    View Amenities, Policies & Extra Details ▼
-                </summary>
-                
-                <div style="margin-top: 0.75rem; font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.75rem;">
-                    <div>
-                        <strong style="color: #94a3b8; display: block; margin-bottom: 0.4rem;">Amenities:</strong>
-                        <div>${amenitiesHTML}</div>
-                    </div>
+            <details class="details-accordion">
+                <summary>View Amenities, Policies & Extra Details ▼</summary>
+                <div class="details-content">
+                    <strong style="color: #94a3b8; display: block; margin-bottom: 0.4rem;">Amenities:</strong>
+                    <div class="amenities-container">${amenitiesHTML}</div>
                 </div>
             </details>
         `;
