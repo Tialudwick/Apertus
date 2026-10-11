@@ -1096,3 +1096,56 @@ body, body.dark-theme {
         width: 100%;
     }
 }
+
+.bed-gauge-container {
+    position: relative;
+    width: 95px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    padding: 8px 6px 6px;
+    flex-shrink: 0;
+}
+
+.bed-gauge-svg {
+    width: 75px;
+    height: 44px;
+    overflow: visible;
+}
+
+.gauge-bg {
+    fill: none;
+    stroke: #1e293b;
+    stroke-width: 7;
+    stroke-linecap: round;
+}
+
+.gauge-fill {
+    fill: none;
+    stroke-width: 7;
+    stroke-linecap: round;
+    stroke-dasharray: 110;
+    transition: stroke-dashoffset 0.4s ease, stroke 0.3s ease;
+}
+
+.gauge-text {
+    text-align: center;
+    margin-top: -6px;
+}
+
+.gauge-text .count {
+    font-size: 1.2rem;
+    font-weight: 800;
+    display: block;
+    line-height: 1;
+}
+
+.gauge-text .label {
+    font-size: 0.65rem;
+    color: #94a3b8;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}

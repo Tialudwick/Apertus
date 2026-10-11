@@ -255,3 +255,32 @@ function escapeHtml(str) {
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
     }[m]));
 }
+
+function getBedGaugeHTML(openBeds, totalBeds) {
+    const totalArcLength = 110;
+    const ratio = totalBeds > 0 ? Math.min(openBeds / totalBeds, 1) : 0;
+    const dashOffset = totalArcLength * (1 - ratio);
+    const gaugeColor = openBeds > 0 ? '#22c55e' : '#94a3b8';
+
+    return `
+        <div class="bed-gauge-container">
+            <svg class="bed-gauge-svg" viewBox="0 0 100 60">
+                <path class="gauge-bg" d="M 15,50 A 35,35 0 0,1 85,50" />
+                <path class="gauge-fill" 
+                      d="M 15,50 A 35,35 0 0,1 85,50" 
+                      style="stroke-dashoffset: ${dashOffset}; stroke: ${gaugeColor};" />
+                <g class="bed-icon-group" transform="translate(37, 26)">
+                    <rect x="0" y="2" width="3" height="15" rx="1" fill="#38bdf8" />
+                    <rect x="4" y="9" width="21" height="5" rx="1" fill="#38bdf8" />
+                    <rect x="4" y="6" width="6" height="4" rx="1" fill="#cbd5e1" />
+                    <rect x="0" y="14" width="25" height="2" rx="1" fill="#38bdf8" />
+                    <rect x="23" y="14" width="2" height="4" rx="1" fill="#38bdf8" />
+                </g>
+            </svg>
+            <div class="gauge-text">
+                <span class="count" style="color: ${gaugeColor}">${openBeds}</span>
+                <span class="label">OPEN BEDS</span>
+            </div>
+        </div>
+    `;
+}
