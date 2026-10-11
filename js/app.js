@@ -142,6 +142,7 @@ function renderHouseCards(houses) {
             : '<span class="text-muted">None listed</span>';
 
         const availCount = house.available_beds || 0;
+        const totalHouseCapacity = (availCount + (house.occupied_beds || 0) + (house.reserved_beds || 0) + (house.maintenance_beds || 0)) || 10;
 
         card.innerHTML = `
             <div class="card-top">
@@ -151,10 +152,7 @@ function renderHouseCards(houses) {
                     <p class="house-location">${escapeHtml(house.city || 'N/A')}, ${escapeHtml(house.county || '')} County</p>
                 </div>
 
-                <div class="open-beds-box ${availCount > 0 ? 'has-openings' : 'no-openings'}">
-                    <span class="open-count">${availCount}</span>
-                    <span class="open-label">OPEN BEDS</span>
-                </div>
+                ${getBedGaugeHTML(availCount, totalHouseCapacity)}
             </div>
 
             <div class="card-tags-row">
@@ -205,6 +203,35 @@ function renderHouseCards(houses) {
         `;
         grid.appendChild(card);
     });
+}
+
+function getBedGaugeHTML(openBeds, totalBeds) {
+    const totalArcLength = 126;
+    const ratio = totalBeds > 0 ? Math.min(openBeds / totalBeds, 1) : 0;
+    const dashOffset = totalArcLength * (1 - ratio);
+    const gaugeColor = openBeds > 0 ? '#10b981' : '#64748b';
+
+    return `
+        <div class="bed-gauge-container">
+            <svg class="bed-gauge-svg" viewBox="0 0 100 60">
+                <path class="gauge-bg" d="M 10,50 A 40,40 0 0,1 90,50" />
+                <path class="gauge-fill" 
+                      d="M 10,50 A 40,40 0 0,1 90,50" 
+                      style="stroke-dashoffset: ${dashOffset}; stroke: ${gaugeColor};" />
+                <g class="bed-icon-group" transform="translate(37, 28)">
+                    <rect x="0" y="2" width="3" height="15" rx="1" />
+                    <rect x="4" y="9" width="21" height="5" rx="1" />
+                    <rect x="4" y="6" width="6" height="4" rx="1" class="pillow" />
+                    <rect x="0" y="14" width="25" height="2" rx="1" />
+                    <rect x="23" y="14" width="2" height="4" rx="1" />
+                </g>
+            </svg>
+            <div class="gauge-text">
+                <span class="count" style="color: ${gaugeColor}">${openBeds}</span>
+                <span class="label">OPEN BEDS</span>
+            </div>
+        </div>
+    `;
 }
 
 function subscribeToRealtimeUpdates() {
